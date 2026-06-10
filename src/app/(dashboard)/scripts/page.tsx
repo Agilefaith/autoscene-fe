@@ -276,7 +276,7 @@ export default function ScriptsPage() {
         { ...data, id: crypto.randomUUID(), createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
         ...prev,
       ]);
-    } else if (modal && modal !== 'new') {
+    } else if (modal !== null) {
       setScripts((prev) => prev.map((s) => s.id === modal.id ? { ...s, ...data } : s));
     }
     setModal(null);

@@ -454,7 +454,7 @@ export default function CampaignsPage() {
   const handleSave = (data: Omit<CampaignData, 'id' | 'status'>) => {
     if (modal === 'new') {
       setCampaigns((prev) => [{ ...data, id: crypto.randomUUID(), status: 'active' }, ...prev]);
-    } else if (modal && modal !== 'new') {
+    } else if (modal !== null) {
       setCampaigns((prev) => prev.map((c) => c.id === modal.id ? { ...c, ...data } : c));
     }
     setModal(null);
