@@ -1,66 +1,33 @@
-import type { Plan } from './pricing.types';
+// Landing-page pricing, derived from the shared plan catalog (data/plans.ts)
+// so marketing and the in-app billing page never drift apart.
+import { PLAN_CATALOG, formatDuration } from './plans';
 
-export type { CreditPack, Plan } from './pricing.types';
+export interface LandingPlan {
+  id: string;
+  name: string;
+  price: number;
+  period: string;
+  highlighted: boolean;
+  badge?: string;
+  quota: string;
+  maxDuration: string;
+  mode: string;
+  features: string[];
+  cta: string;
+  ctaHref: string;
+}
 
-export const plans: Plan[] = [
-  {
-    name: 'Free',
-    price: 0,
-    period: 'forever',
-    highlighted: false,
-    avatarTier: '',
-    personaLimit: 2,
-    features: [
-      '1 credit trial (30s video)',
-      'Up to 2 personas',
-      'Basic AI script generation',
-      'Platform voices only',
-      '9:16 format only',
-    ],
-    creditPacks: [],
-    cta: 'Start Free',
-    ctaHref: '/signup',
-  },
-  {
-    name: 'Pro',
-    price: 29,
-    period: 'per month',
-    highlighted: true,
-    badge: 'Most Popular',
-    avatarTier: '',
-    personaLimit: 10,
-    features: [
-      'Editing engine (zooms, cuts, pacing)',
-      'Up to 10 personas',
-      'AI script + custom script mode',
-      'Full voice library + custom Voice ID',
-      'All formats: 16:9, 9:16, 1:1, 4:5',
-      'Campaign automation',
-      'Real-time pipeline viewer',
-    ],
-    creditPacks: [
-      { price: 10, credits: 10, approxMinutes: 5 },
-      { price: 30, credits: 40, approxMinutes: 20 },
-    ],
-    cta: 'Start Creating',
-    ctaHref: '/signup',
-  },
-  {
-    name: 'Premium',
-    price: 79,
-    period: 'per month',
-    highlighted: false,
-    avatarTier: '',
-    personaLimit: 'unlimited',
-    features: [
-      'Natural realism rendering (4x quality)',
-      'Unlimited personas',
-      'Priority render queue',
-      'All Pro features included',
-      'Dedicated support',
-    ],
-    creditPacks: [{ price: 100, credits: 40, approxMinutes: 20 }],
-    cta: 'Go Premium',
-    ctaHref: '/signup',
-  },
-];
+export const plans: LandingPlan[] = PLAN_CATALOG.map((p) => ({
+  id: p.id,
+  name: p.name,
+  price: p.price,
+  period: p.price === 0 ? 'forever' : 'per month',
+  highlighted: !!p.highlighted,
+  badge: p.badge,
+  quota: `${p.videosPerMonth} ${p.videosPerMonth === 1 ? 'video' : 'videos'} / ${p.price === 0 ? 'trial' : 'month'}`,
+  maxDuration: `Up to ${formatDuration(p.maxSeconds)} per video`,
+  mode: p.mode === 'mode_2' ? 'Enhanced motion (Mode 2)' : 'Cinematic motion (Mode 1)',
+  features: p.features,
+  cta: p.price === 0 ? 'Start Free' : `Get ${p.name}`,
+  ctaHref: '/signup',
+}));

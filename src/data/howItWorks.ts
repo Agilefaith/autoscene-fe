@@ -1,7 +1,7 @@
 import { ImagePlus, FileText, Mic, MonitorPlay, Clock, Type, Sparkles, Download } from 'lucide-react';
 
-const BLUE   = { accent: '#00D4FF', accentDim: 'rgba(0,212,255,0.10)'  } as const;
-const PURPLE = { accent: '#8A2BE2', accentDim: 'rgba(138,43,226,0.10)' } as const;
+const BLUE   = { accent: '#C026D3', accentDim: 'rgba(192,38,211,0.10)' } as const;
+const PURPLE = { accent: '#7C3AED', accentDim: 'rgba(124,58,237,0.10)' } as const;
 
 export const steps = [
   { n: '01', icon: ImagePlus,   title: 'Upload Your Image',       desc: 'Upload a high-res photo of your AI influencer. We create a reusable avatar saved directly to your library.',                                              time: '~30 sec', ...BLUE   },

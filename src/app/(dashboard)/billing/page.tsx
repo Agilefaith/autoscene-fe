@@ -1,474 +1,433 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Zap, Crown, Shield, Check, CreditCard, Plus,
-  ChevronRight, Sparkles, Clock, Video, X, AlertTriangle,
+  Zap, Crown, Shield, Check, CreditCard,
+  ChevronRight, Sparkles, Clock, Video, Film,
+  ArrowDownLeft, ArrowUpRight, Loader2, ReceiptText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { containerVariants, itemVariants } from '@/lib/animations';
+import { authedFetch } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import type { BillingUsage, CreditTransaction } from '@/types/billing';
+import { PLAN_CATALOG, planById, formatDuration, type PlanDef, type PlanId } from '@/data/plans';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Plan visuals ──────────────────────────────────────────────────────────────
 
-type PlanId = 'free' | 'pro' | 'premium';
-
-interface Plan {
-  id: PlanId;
-  name: string;
-  price: number;
-  priceLabel: string;
-  avatar: string;
-  videoLimit: string;
-  features: string[];
-  creditPackages?: CreditPackage[];
-  color: string;
-  icon: React.ReactNode;
-}
-
-interface CreditPackage {
-  credits: number;
-  price: number;
-  mins: number;
-  popular?: boolean;
-}
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-const PLANS: Plan[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    priceLabel: '$0 / mo',
-    avatar: 'Avatar III',
-    videoLimit: '2 videos',
-    color: '#52525B',
-    icon: <Shield className="w-5 h-5" />,
-    features: [
-      '1 free credit (30s video)',
-      'Avatar III only',
-      'Up to 2 videos',
-      'Watermarked output',
-      'Standard support',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 29,
-    priceLabel: '$29 / mo',
-    avatar: 'Avatar III',
-    videoLimit: '10 videos / mo',
-    color: '#00D4FF',
-    icon: <Zap className="w-5 h-5" />,
-    features: [
-      'Avatar III (high quality)',
-      'FFmpeg editing engine',
-      'Up to 10 personas',
-      'Custom voice IDs',
-      'Campaign scheduler',
-      'Priority support',
-    ],
-    creditPackages: [
-      { credits: 10, price: 10, mins: 5 },
-      { credits: 40, price: 30, mins: 20, popular: true },
-    ],
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: 79,
-    priceLabel: '$79 / mo',
-    avatar: 'Avatar IV',
-    videoLimit: 'Unlimited',
-    color: '#8A2BE2',
-    icon: <Crown className="w-5 h-5" />,
-    features: [
-      'Avatar IV (natural realism)',
-      'HeyGen motion prompts',
-      'Unlimited videos',
-      'Unlimited personas',
-      'Voice cloning',
-      'Dedicated support',
-    ],
-    creditPackages: [
-      { credits: 40, price: 100, mins: 20, popular: true },
-    ],
-  },
-];
-
-// ─── Mock user state ──────────────────────────────────────────────────────────
-
-const MOCK_USER = {
-  plan: 'pro' as PlanId,
-  creditsTotal: 40,
-  creditsUsed: 14,
-  videosGenerated: 7,
-  card: { brand: 'Visa', last4: '4242', expiry: '06/28' },
+const PLAN_COLOR: Record<PlanId, string> = {
+  free: '#6E6A7C', starter: '#0EA5E9', creator: '#7C3AED',
+  scale: '#C026D3', creator_m2: '#7C3AED', scale_m2: '#C026D3',
 };
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.07 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.38 } },
-};
-
-function creditsToMins(credits: number, plan: PlanId) {
-  const multiplier = plan === 'premium' ? 4 : 1;
-  return Math.floor((credits * 30) / 60 / multiplier);
+function planIcon(plan: PlanDef) {
+  if (plan.id === 'free') return <Shield className="w-5 h-5" />;
+  if (plan.mode === 'mode_2') return <Crown className="w-5 h-5" />;
+  if (plan.id === 'scale') return <Crown className="w-5 h-5" />;
+  return <Zap className="w-5 h-5" />;
 }
 
-// ─── Buy Credits Modal ────────────────────────────────────────────────────────
+function formatTxType(type: string) {
+  switch (type) {
+    case 'deduction': return 'Video generated';
+    case 'refund':    return 'Video refunded';
+    case 'grant':     return 'Quota granted';
+    default:          return type;
+  }
+}
 
-function BuyCreditsModal({
-  plan,
-  onClose,
-}: {
-  plan: Plan;
-  onClose: () => void;
-}) {
-  const [selected, setSelected] = useState<number | null>(null);
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+
+function CardSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        transition={{ duration: 0.2 }}
-        className="relative w-full max-w-md bg-[#0F0F18] rounded-2xl border border-white/[0.10] p-6 flex flex-col gap-5 shadow-2xl"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-white">Buy Credits</h2>
-            <p className="text-xs text-[#52525B] mt-0.5">1 credit = 30s of video · {plan.name} plan</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg glass flex items-center justify-center text-[#52525B] hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {plan.creditPackages?.map((pkg) => (
-            <button
-              key={pkg.price}
-              onClick={() => setSelected(pkg.price)}
-              className={cn(
-                'relative w-full p-4 rounded-xl border text-left transition-all',
-                selected === pkg.price
-                  ? 'border-[#00D4FF]/60 bg-[#00D4FF]/[0.06]'
-                  : 'border-white/[0.08] hover:border-white/20 hover:bg-white/[0.02]'
-              )}
-            >
-              {pkg.popular && (
-                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-[#00D4FF]/15 border border-[#00D4FF]/30 text-[10px] font-bold text-[#00D4FF]">
-                  Best Value
-                </span>
-              )}
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-xl font-bold text-white">${pkg.price}</span>
-                <span className="text-sm text-[#52525B]">for {pkg.credits} credits</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-[#52525B]">
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ≈ {pkg.mins} mins of video</span>
-                <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {pkg.credits} credits</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#FBBF24]/[0.06] border border-[#FBBF24]/20">
-          <AlertTriangle className="w-3.5 h-3.5 text-[#FBBF24] shrink-0" />
-          <p className="text-xs text-[#FBBF24]/80">Payments processed securely via Stripe. Credits never expire.</p>
-        </div>
-
-        <button
-          disabled={selected === null}
-          className={cn(
-            'btn-neon py-3 rounded-xl text-sm font-semibold transition-all',
-            selected === null && 'opacity-40 cursor-not-allowed'
-          )}
-        >
-          {selected ? `Pay $${selected} via Stripe` : 'Select a package'}
-        </button>
-      </motion.div>
+    <div className="glass rounded-2xl p-5 flex flex-col gap-4 animate-pulse">
+      <div className="h-4 w-32 bg-surface-muted rounded-lg" />
+      <div className="h-10 w-24 bg-surface-muted rounded-lg" />
+      <div className="h-2 bg-surface-muted rounded-full" />
     </div>
   );
 }
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 
-function PlanCard({
-  plan,
-  isCurrent,
-  onSelect,
-}: {
-  plan: Plan;
-  isCurrent: boolean;
-  onSelect: () => void;
-}) {
+function PlanCard({ plan, isCurrent }: { plan: PlanDef; isCurrent: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const color = PLAN_COLOR[plan.id];
+
+  const handleUpgrade = async () => {
+    if (plan.id === 'free') return; // downgrade/cancel is handled in the LS portal
+    setLoading(true);
+    setError(null);
+    try {
+      const origin = window.location.origin;
+      const res = await authedFetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan_id: plan.id,
+          success_url: `${origin}/billing?upgraded=1`,
+          cancel_url: `${origin}/billing`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url; // Lemon Squeezy hosted checkout
+        return;
+      }
+      setError(data?.detail ?? 'Failed to start checkout');
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <motion.div
       variants={itemVariants}
-      className={cn(
-        'glass rounded-2xl p-5 flex flex-col gap-4 relative transition-all',
-        isCurrent && 'border border-opacity-40',
-      )}
-      style={isCurrent ? { borderColor: plan.color + '66' } : {}}
+      className={cn('glass rounded-2xl p-5 flex flex-col gap-4 relative transition-all', isCurrent && 'border')}
+      style={isCurrent ? { borderColor: color + '66' } : {}}
     >
+      {plan.badge && !isCurrent && (
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full gradient-brand text-[10px] font-bold text-white whitespace-nowrap">
+          {plan.badge}
+        </div>
+      )}
       {isCurrent && (
         <div
           className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-bold border"
-          style={{ background: plan.color + '1A', borderColor: plan.color + '40', color: plan.color }}
+          style={{ background: color + '1A', borderColor: color + '40', color }}
         >
           Current Plan
         </div>
       )}
 
-      {/* Icon + name */}
       <div className="flex items-center gap-3">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: plan.color + '1A', color: plan.color }}
-        >
-          {plan.icon}
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: color + '1A', color }}>
+          {planIcon(plan)}
         </div>
         <div>
-          <h3 className="text-base font-bold text-white">{plan.name}</h3>
-          <p className="text-xs" style={{ color: plan.color }}>{plan.avatar}</p>
+          <h3 className="text-base font-bold text-text">{plan.name}</h3>
+          <p className="text-xs" style={{ color }}>
+            {plan.mode === 'mode_2' ? 'Enhanced · Mode 2' : 'Cinematic · Mode 1'}
+          </p>
         </div>
       </div>
 
-      {/* Price */}
       <div>
-        <span className="text-2xl font-bold text-white">{plan.priceLabel.split(' ')[0]}</span>
-        <span className="text-sm text-[#52525B] ml-1">/ mo</span>
-        <p className="text-xs text-[#52525B] mt-0.5">{plan.videoLimit}</p>
+        <span className="text-2xl font-bold text-text">${plan.price}</span>
+        <span className="text-sm text-text-muted ml-1">/ mo</span>
+        <p className="text-xs text-text-muted mt-0.5">
+          {plan.videosPerMonth} {plan.videosPerMonth === 1 ? 'video' : 'videos'} / mo · up to {formatDuration(plan.maxSeconds)} each
+        </p>
       </div>
 
-      {/* Features */}
       <ul className="flex flex-col gap-2 flex-1">
         {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-xs text-[#A1A1AA]">
-            <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: plan.color }} />
+          <li key={f} className="flex items-start gap-2 text-xs text-text-secondary">
+            <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color }} />
             {f}
           </li>
         ))}
       </ul>
 
-      {/* CTA */}
       {isCurrent ? (
         <div
           className="py-2.5 rounded-xl text-xs font-semibold text-center border"
-          style={{ borderColor: plan.color + '30', color: plan.color, background: plan.color + '0D' }}
+          style={{ borderColor: color + '30', color, background: color + '0D' }}
         >
           Active
         </div>
+      ) : plan.id === 'free' ? (
+        <div className="py-2.5 rounded-xl text-xs font-semibold text-center border border-border text-text-muted">
+          Free tier
+        </div>
       ) : (
-        <button
-          onClick={onSelect}
-          className="py-2.5 rounded-xl text-xs font-semibold border border-white/[0.10] text-[#A1A1AA] hover:text-white hover:border-white/30 transition-all"
-        >
-          {plan.price === 0 ? 'Downgrade' : 'Upgrade'} to {plan.name}
-        </button>
+        <div className="flex flex-col gap-1.5">
+          <button
+            onClick={handleUpgrade}
+            disabled={loading}
+            className={cn(
+              'py-2.5 rounded-xl text-xs font-semibold border border-border text-text-secondary hover:text-text hover:border-primary/30 transition-all flex items-center justify-center gap-2',
+              loading && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Choose {plan.name}
+          </button>
+          {error && <p className="text-[10px] text-[#EF4444] text-center">{error}</p>}
+        </div>
       )}
     </motion.div>
+  );
+}
+
+// ─── Transaction Row ──────────────────────────────────────────────────────────
+
+function TransactionRow({ tx }: { tx: CreditTransaction }) {
+  const isPositive = tx.amount > 0;
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
+      <div className={cn(
+        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+        isPositive ? 'bg-[#22C55E]/10' : 'bg-[#EF4444]/10'
+      )}>
+        {isPositive
+          ? <ArrowDownLeft className="w-3.5 h-3.5 text-[#22C55E]" />
+          : <ArrowUpRight className="w-3.5 h-3.5 text-[#EF4444]" />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-text truncate">{formatTxType(tx.type)}</p>
+        <p className="text-xs text-text-muted">{formatDate(tx.created_at)}</p>
+      </div>
+      <span className={cn('text-sm font-semibold shrink-0', isPositive ? 'text-[#22C55E]' : 'text-[#EF4444]')}>
+        {isPositive ? '+' : ''}{tx.amount} {Math.abs(tx.amount) === 1 ? 'video' : 'videos'}
+      </span>
+    </div>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const [showBuyModal, setShowBuyModal] = useState(false);
-  const currentPlan = PLANS.find((p) => p.id === MOCK_USER.plan)!;
-  const creditsRemaining = MOCK_USER.creditsTotal - MOCK_USER.creditsUsed;
-  const creditPct = (creditsRemaining / MOCK_USER.creditsTotal) * 100;
-  const minsRemaining = creditsToMins(creditsRemaining, MOCK_USER.plan);
+  const { user } = useAuth();
+  const [usage, setUsage]             = useState<BillingUsage | null>(null);
+  const [transactions, setTxs]        = useState<CreditTransaction[]>([]);
+  const [loadingUsage, setLoadingUsage]   = useState(true);
+  const [loadingTxs, setLoadingTxs]       = useState(true);
+
+  const fetchUsage = useCallback(async () => {
+    if (!user) return;
+    setLoadingUsage(true);
+    try {
+      const res = await authedFetch('/api/billing/usage');
+      if (res.ok) setUsage(await res.json());
+    } finally {
+      setLoadingUsage(false);
+    }
+  }, [user]);
+
+  const fetchTxs = useCallback(async () => {
+    if (!user) return;
+    setLoadingTxs(true);
+    try {
+      const res = await authedFetch('/api/billing/transactions');
+      if (res.ok) setTxs(await res.json());
+    } finally {
+      setLoadingTxs(false);
+    }
+  }, [user]);
+
+  useEffect(() => { fetchUsage(); fetchTxs(); }, [fetchUsage, fetchTxs]);
+
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError]     = useState<string | null>(null);
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    setPortalError(null);
+    try {
+      const res = await authedFetch('/api/billing/portal');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setPortalError(data?.detail ?? 'Could not open subscription portal');
+    } catch {
+      setPortalError('Network error. Please try again.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const planId              = (usage?.plan_tier ?? 'free') as PlanId;
+  const currentPlan         = planById(planId);
+  const color               = PLAN_COLOR[planId] ?? PLAN_COLOR.free;
+  const videosLeft          = usage?.credit_balance ?? 0;
+  const quota               = usage?.monthly_quota ?? currentPlan.videosPerMonth;
+  const videosUsed          = Math.max(0, quota - videosLeft);
+  const pct                 = quota > 0 ? (videosLeft / quota) * 100 : 0;
+  const videosGenerated     = usage?.videos_generated ?? 0;
 
   return (
-    <>
-      <AnimatePresence>
-        {showBuyModal && (
-          <BuyCreditsModal plan={currentPlan} onClose={() => setShowBuyModal(false)} />
-        )}
-      </AnimatePresence>
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="max-w-7xl mx-auto flex flex-col gap-8">
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="max-w-6xl mx-auto flex flex-col gap-8"
-      >
-        {/* Header */}
-        <motion.div variants={itemVariants}>
-          <h1 className="text-2xl font-bold text-white">Billing</h1>
-          <p className="text-sm text-[#52525B] mt-1">Manage your plan, credits, and payment method.</p>
-        </motion.div>
+      <motion.div variants={itemVariants}>
+        <h1 className="text-2xl font-bold text-text">Billing</h1>
+        <p className="text-sm text-text-muted mt-1">Your plan, video quota, and payment method.</p>
+      </motion.div>
 
-        {/* ── Credits + Plan summary ── */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Quota + Plan summary ── */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          {/* Credits card */}
+        {loadingUsage ? <CardSkeleton /> : (
           <div className="glass rounded-2xl p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-[#00D4FF]" />
-                </div>
-                <span className="text-sm font-semibold text-white">Credits Balance</span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/10 border border-[#7C3AED]/20 flex items-center justify-center">
+                <Video className="w-4 h-4 text-[#7C3AED]" />
               </div>
-              {MOCK_USER.plan !== 'free' && (
-                <button
-                  onClick={() => setShowBuyModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 text-[#00D4FF] text-xs font-semibold hover:bg-[#00D4FF]/20 transition-all"
-                >
-                  <Plus className="w-3 h-3" /> Buy Credits
-                </button>
-              )}
+              <span className="text-sm font-semibold text-text">Videos this period</span>
             </div>
 
             <div>
               <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-4xl font-bold text-white">{creditsRemaining}</span>
-                <span className="text-sm text-[#52525B]">/ {MOCK_USER.creditsTotal} credits</span>
+                <span className="text-4xl font-bold text-text">{videosLeft}</span>
+                <span className="text-sm text-text-muted">/ {quota} left</span>
               </div>
-              <p className="text-xs text-[#52525B] flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                ≈ {minsRemaining} mins of video remaining
+              <p className="text-xs text-text-muted flex items-center gap-1">
+                <Film className="w-3 h-3" />
+                up to {formatDuration(currentPlan.maxSeconds)} per video
               </p>
             </div>
 
-            {/* Progress bar */}
             <div className="flex flex-col gap-1.5">
-              <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+              <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${creditPct}%` }}
+                  animate={{ width: `${pct}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                   className="h-full rounded-full"
                   style={{
-                    background: creditPct > 40
-                      ? 'linear-gradient(90deg, #00D4FF, #8A2BE2)'
-                      : creditPct > 15
-                        ? 'linear-gradient(90deg, #FBBF24, #F97316)'
-                        : '#EF4444',
+                    background: pct > 40 ? '#7C3AED' : pct > 15 ? 'linear-gradient(90deg, #FBBF24, #F97316)' : '#EF4444',
                   }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-[#3F3F46]">
-                <span>{MOCK_USER.creditsUsed} used this cycle</span>
-                <span>{creditsRemaining} remaining</span>
+              <div className="flex justify-between text-[10px] text-[#6E6A7C]">
+                <span>{videosUsed} used this cycle</span>
+                <span>{videosLeft} remaining</span>
               </div>
             </div>
 
-            {/* Formula note */}
-            <p className="text-[10px] text-[#3F3F46] leading-relaxed pt-1 border-t border-white/[0.05]">
-              1 credit = 30s · Avatar III = 1×/credit · Avatar IV = 4×/credit
+            <p className="text-[10px] text-[#6E6A7C] leading-relaxed pt-1 border-t border-border">
+              {usage?.reset_date
+                ? `Resets ${formatDate(usage.reset_date)} · no rollover, quota does not carry over`
+                : 'Free trial · subscribe for a monthly video quota'}
             </p>
           </div>
+        )}
 
-          {/* Plan + usage card */}
+        {loadingUsage ? <CardSkeleton /> : (
           <div className="glass rounded-2xl p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: currentPlan.color + '1A', color: currentPlan.color }}
-              >
-                {currentPlan.icon}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color + '1A', color }}>
+                {planIcon(currentPlan)}
               </div>
-              <span className="text-sm font-semibold text-white">Current Plan</span>
+              <span className="text-sm font-semibold text-text">Current Plan</span>
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-white">{currentPlan.name}</p>
-                <p className="text-xs mt-0.5" style={{ color: currentPlan.color }}>
-                  {currentPlan.avatar} · {currentPlan.priceLabel}
+                <p className="text-2xl font-bold text-text">{currentPlan.name}</p>
+                <p className="text-xs mt-0.5" style={{ color }}>
+                  {currentPlan.mode === 'mode_2' ? 'Enhanced · Mode 2' : 'Cinematic · Mode 1'} · ${currentPlan.price}/mo
                 </p>
               </div>
               <div
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border"
-                style={{ background: currentPlan.color + '1A', borderColor: currentPlan.color + '40', color: currentPlan.color }}
+                style={{ background: color + '1A', borderColor: color + '40', color }}
               >
                 Active
               </div>
             </div>
 
-            {/* Usage stats */}
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="bg-white/[0.03] rounded-xl p-3 flex flex-col gap-1">
-                <Video className="w-4 h-4 text-[#52525B]" />
-                <p className="text-xl font-bold text-white">{MOCK_USER.videosGenerated}</p>
-                <p className="text-[10px] text-[#52525B]">Videos generated</p>
+              <div className="bg-surface-muted rounded-xl p-3 flex flex-col gap-1">
+                <Clock className="w-4 h-4 text-text-muted" />
+                <p className="text-xl font-bold text-text">{formatDuration(currentPlan.maxSeconds)}</p>
+                <p className="text-[10px] text-text-muted">Max per video</p>
               </div>
-              <div className="bg-white/[0.03] rounded-xl p-3 flex flex-col gap-1">
-                <Zap className="w-4 h-4 text-[#52525B]" />
-                <p className="text-xl font-bold text-white">{MOCK_USER.creditsUsed}</p>
-                <p className="text-[10px] text-[#52525B]">Credits used</p>
-              </div>
-            </div>
-
-            <button className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/[0.08] hover:bg-white/[0.03] transition-all group">
-              <span className="text-xs text-[#A1A1AA] group-hover:text-white transition-colors">Manage subscription via Stripe</span>
-              <ChevronRight className="w-4 h-4 text-[#3F3F46] group-hover:text-white transition-colors" />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* ── Plans ── */}
-        <motion.section variants={itemVariants} className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#8A2BE2]" />
-            <h2 className="text-base font-semibold text-white">Plans</h2>
-          </div>
-          <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {PLANS.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                isCurrent={plan.id === MOCK_USER.plan}
-                onSelect={() => console.log('Switch to', plan.id)}
-              />
-            ))}
-          </motion.div>
-        </motion.section>
-
-        {/* ── Payment Method ── */}
-        <motion.section variants={itemVariants} className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-white">Payment Method</h2>
-          <div className="glass rounded-2xl p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-8 bg-white/[0.06] border border-white/[0.08] rounded-lg flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-[#52525B]" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  {MOCK_USER.card.brand} •••• {MOCK_USER.card.last4}
-                </p>
-                <p className="text-xs text-[#52525B]">Expires {MOCK_USER.card.expiry}</p>
+              <div className="bg-surface-muted rounded-xl p-3 flex flex-col gap-1">
+                <Video className="w-4 h-4 text-text-muted" />
+                <p className="text-xl font-bold text-text">{videosGenerated}</p>
+                <p className="text-[10px] text-text-muted">Videos generated (all time)</p>
               </div>
             </div>
-            <button className="px-4 py-2 rounded-xl border border-white/[0.08] text-xs font-semibold text-[#A1A1AA] hover:text-white hover:border-white/20 transition-all">
-              Update
-            </button>
-          </div>
 
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-            <div className="w-4 h-4 rounded bg-[#635BFF] flex items-center justify-center shrink-0">
-              <span className="text-[8px] font-black text-white">S</span>
-            </div>
-            <p className="text-xs text-[#52525B]">
-              Payments are securely processed by <span className="text-[#A1A1AA]">Stripe</span>. Vidora does not store your card details.
-            </p>
+            {planId !== 'free' && (
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  className={cn(
+                    'flex items-center justify-between px-4 py-3 rounded-xl border border-border hover:bg-surface-muted transition-all group',
+                    portalLoading && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  <span className="text-xs text-text-secondary group-hover:text-text transition-colors flex items-center gap-2">
+                    {portalLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Manage subscription
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-[#6E6A7C] group-hover:text-text transition-colors" />
+                </button>
+                {portalError && <p className="text-[10px] text-[#EF4444]">{portalError}</p>}
+              </div>
+            )}
           </div>
-        </motion.section>
+        )}
       </motion.div>
-    </>
+
+      {/* ── Plans ── */}
+      <motion.section variants={itemVariants} className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#7C3AED]" />
+          <h2 className="text-base font-semibold text-text">Plans</h2>
+        </div>
+        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {PLAN_CATALOG.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} isCurrent={plan.id === planId} />
+          ))}
+        </motion.div>
+      </motion.section>
+
+      {/* ── Payment Method ── */}
+      <motion.section variants={itemVariants} className="flex flex-col gap-4">
+        <h2 className="text-base font-semibold text-text">Payment Method</h2>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-surface-muted border border-border">
+          <div className="w-12 h-8 bg-surface border border-border rounded-lg flex items-center justify-center shrink-0">
+            <CreditCard className="w-5 h-5 text-text-muted" />
+          </div>
+          <p className="text-xs text-text-muted">
+            Payments are securely processed via <span className="text-text-secondary">Lemon Squeezy</span>. AutoScene does not store your card details. Manage your card and cancellation from the subscription portal.
+          </p>
+        </div>
+      </motion.section>
+
+      {/* ── Transaction History ── */}
+      <motion.section variants={itemVariants} className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <ReceiptText className="w-4 h-4 text-text-muted" />
+          <h2 className="text-base font-semibold text-text">Activity</h2>
+        </div>
+
+        <div className="glass rounded-2xl p-5">
+          {loadingTxs ? (
+            <div className="flex items-center justify-center py-8 gap-2 text-text-muted">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Loading activity…</span>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <ReceiptText className="w-7 h-7 text-[#6E6A7C]" />
+              <p className="text-sm text-text-muted">No activity yet.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {transactions.map((tx) => (
+                <TransactionRow key={tx.id} tx={tx} />
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.section>
+
+    </motion.div>
   );
 }

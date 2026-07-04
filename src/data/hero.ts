@@ -1,1 +1,1 @@
-export const HERO_AVATARS = ['#8A2BE2', '#00D4FF', '#22C55E', '#F59E0B', '#EF4444'];
+export const HERO_AVATARS = ['#7C3AED', '#C026D3', '#EC4899', '#FB923C', '#8B5CF6'];

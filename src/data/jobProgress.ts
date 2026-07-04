@@ -4,11 +4,12 @@ export interface PipelineStageItem {
   duration?: string;
 }
 
+// AutoScene render pipeline (job_events.stage → order):
+// breakdown → images → voiceover → render → assembly
 export const PIPELINE_STAGES: PipelineStageItem[] = [
-  { name: 'Script Processing', status: 'pending' },
-  { name: 'Motion Analysis', status: 'pending' },
-  { name: 'Avatar Rendering', status: 'pending' },
-  { name: 'Applying Edits', status: 'pending' },
-  { name: 'Subtitle Generation', status: 'pending' },
-  { name: 'Uploading', status: 'pending' },
+  { name: 'Scene Breakdown', status: 'pending' },
+  { name: 'Generating Images', status: 'pending' },
+  { name: 'Voiceover', status: 'pending' },
+  { name: 'Rendering Scenes', status: 'pending' },
+  { name: 'Assembling', status: 'pending' },
 ];

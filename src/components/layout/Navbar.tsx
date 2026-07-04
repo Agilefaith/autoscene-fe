@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Menu, X } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { navLinks } from '@/data/navigation';
+import Logo from './Logo';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -26,48 +27,44 @@ export default function Navbar() {
         className={cn(
           'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
           scrolled
-            ? 'bg-[#050507]/80 backdrop-blur-xl border-white/[0.06]'
+            ? 'bg-white/80 backdrop-blur-xl border-border shadow-[0_4px_24px_rgba(82,50,168,0.05)]'
             : 'bg-transparent border-transparent'
         )}
-        style={{ height: 72 }}
+        style={{ height: 80 }}
       >
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8A2BE2] to-[#00D4FF] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-bold gradient-text tracking-tight">Vidora</span>
-          </Link>
+        <div className="max-w-[1536px] mx-auto px-6 h-full flex items-center justify-between">
+          <Logo />
 
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-9">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm text-[#A1A1AA] hover:text-white transition-colors duration-200 font-medium"
+                className="flex items-center gap-1 text-[15px] text-text-secondary hover:text-text transition-colors duration-200 font-medium"
               >
                 {link.label}
+                {link.dropdown && <ChevronDown className="w-4 h-4 text-text-muted mt-0.5" />}
               </a>
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-5">
             <Link
               href="/login"
-              className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-all duration-200 px-4 py-2 rounded-lg border border-white/[0.10] hover:border-white/20 hover:bg-white/[0.04]"
+              className="text-[15px] font-medium text-text-secondary hover:text-text transition-colors duration-200"
             >
-              Login
+              Log in
             </Link>
             <Link
               href="/signup"
-              className="btn-neon text-sm px-5 py-2 rounded-xl cursor-pointer"
+              className="btn-cta text-[15px] px-6 py-2.5 rounded-xl cursor-pointer"
             >
-              Start Creating
+              Start Creating Free
             </Link>
           </div>
 
           <button
-            className="md:hidden text-[#A1A1AA] hover:text-white transition-colors p-2"
+            className="md:hidden text-text-secondary hover:text-text transition-colors p-2"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -83,7 +80,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-[72px] left-0 right-0 z-40 bg-[#0B0B12]/95 backdrop-blur-xl border-b border-white/[0.06] p-6 md:hidden"
+            className="fixed top-[80px] left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-b border-border p-6 md:hidden shadow-[0_8px_30px_rgba(82,50,168,0.10)]"
           >
             <nav className="flex flex-col gap-4 mb-6">
               {navLinks.map((link) => (
@@ -91,9 +88,10 @@ export default function Navbar() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-[#A1A1AA] hover:text-white transition-colors py-2 font-medium"
+                  className="flex items-center justify-between text-text-secondary hover:text-text transition-colors py-2 font-medium"
                 >
                   {link.label}
+                  {link.dropdown && <ChevronDown className="w-4 h-4 text-text-muted" />}
                 </a>
               ))}
             </nav>
@@ -101,16 +99,16 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="text-center py-2.5 rounded-xl border border-white/[0.08] text-[#A1A1AA] hover:text-white hover:bg-white/[0.04] transition-all font-medium"
+                className="text-center py-2.5 rounded-xl border border-border-strong text-text-secondary hover:text-text hover:bg-surface-muted transition-all font-medium"
               >
-                Login
+                Log in
               </Link>
               <Link
                 href="/signup"
                 onClick={() => setMobileOpen(false)}
-                className="btn-neon text-center py-2.5 rounded-xl font-medium"
+                className="btn-cta text-center py-2.5 rounded-xl font-medium"
               >
-                Start Creating
+                Start Creating Free
               </Link>
             </div>
           </motion.div>

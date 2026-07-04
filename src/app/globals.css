@@ -1,30 +1,61 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────────────────────────────────
+   AutoScene Design System — Light (v2)
+   See docs/AUTOSCENE_DESIGN_SYSTEM.md
+   ─────────────────────────────────────────────────────────────────────────── */
+
 @theme inline {
-  --color-bg-primary: #050507;
-  --color-bg-secondary: #0B0B12;
-  --color-bg-card: rgba(255, 255, 255, 0.03);
+  /* ── Surfaces ── */
+  --color-bg: #F7F5FD;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F6F3FD;
+  --color-border: #ECE9F5;
+  --color-border-strong: #DDD7EC;
 
-  --color-neon-blue: #00D4FF;
-  --color-neon-purple: #8A2BE2;
-  --color-neon-blue-dim: rgba(0, 212, 255, 0.15);
-  --color-neon-purple-dim: rgba(138, 43, 226, 0.15);
+  /* ── Brand (violet) ── */
+  --color-primary: #7C3AED;
+  --color-primary-light: #8B5CF6;
+  --color-primary-dark: #6D28D9;
+  --color-primary-50: #F3F0FF;
+  --color-primary-100: #EDE9FE;
 
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #52525B;
+  /* ── Accents ── */
+  --color-accent-magenta: #C026D3;
+  --color-accent-pink: #EC4899;
+  --color-accent-orange: #FB923C;
+  --color-star: #FBBF24;
 
-  --color-glass: rgba(255, 255, 255, 0.04);
-  --color-glass-hover: rgba(255, 255, 255, 0.07);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-glow: rgba(138, 43, 226, 0.3);
+  /* ── Text ── */
+  --color-text: #1C1530;
+  --color-text-secondary: #4A4658;
+  --color-text-muted: #6E6A7C;
+  --color-text-on-primary: #FFFFFF;
 
+  /* ── Status ── */
   --color-success: #22C55E;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
-  --color-processing: #8A2BE2;
+  --color-processing: #7C3AED;
 
+  /* ── Backward-compat aliases (old dark token names → light values) ──
+     Keeps legacy utilities (bg-bg-primary, text-neon-blue, border-glass…)
+     resolving while components are migrated section by section. */
+  --color-bg-primary: #F7F5FD;
+  --color-bg-secondary: #FFFFFF;
+  --color-bg-card: #FFFFFF;
+  --color-neon-blue: #7C3AED;
+  --color-neon-purple: #7C3AED;
+  --color-neon-blue-dim: rgba(124, 58, 237, 0.12);
+  --color-neon-purple-dim: rgba(124, 58, 237, 0.12);
+  --color-text-primary: #1C1530;
+  --color-glass: #FFFFFF;
+  --color-glass-hover: #F6F3FD;
+  --color-border-glow: rgba(124, 58, 237, 0.30);
+
+  /* ── Fonts ── */
   --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-display: var(--font-satoshi), var(--font-inter), system-ui, sans-serif;
 }
 
 * {
@@ -36,8 +67,8 @@ html {
 }
 
 body {
-  background-color: #050507;
-  color: #FFFFFF;
+  background-color: #F7F5FD;
+  color: #1C1530;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -45,69 +76,89 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0B12;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(138, 43, 226, 0.5);
-  border-radius: 2px;
+  background: rgba(124, 58, 237, 0.30);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(138, 43, 226, 0.8);
+  background: rgba(124, 58, 237, 0.55);
 }
 
+/* ── Light glass card ── */
 .glass {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #FFFFFF;
+  border: 1px solid #ECE9F5;
+  box-shadow: 0 4px 24px rgba(82, 50, 168, 0.06);
 }
 
 .glass-hover {
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .glass-hover:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(138, 43, 226, 0.3);
+  background: #FCFBFF;
+  border-color: #DDD7EC;
+  box-shadow: 0 8px 30px rgba(82, 50, 168, 0.12);
 }
 
+/* ── Soft violet glows (replace neon) ── */
 .glow-blue {
-  box-shadow: 0 0 20px rgba(138, 43, 226, 0.4), 0 0 60px rgba(138, 43, 226, 0.15), 0 0 20px rgba(0, 212, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.22);
 }
-
 .glow-purple {
-  box-shadow: 0 0 20px rgba(138, 43, 226, 0.4), 0 0 60px rgba(138, 43, 226, 0.15);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
 }
-
-.glow-text-blue {
-  text-shadow: 0 0 30px rgba(138, 43, 226, 0.6);
+.glow-cta {
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
 }
-
+.glow-float {
+  box-shadow: 0 8px 30px rgba(82, 50, 168, 0.12);
+}
+.glow-panel {
+  box-shadow: 0 20px 60px rgba(82, 50, 168, 0.10);
+}
+/* legacy text glows → no-op on light (kept so class names resolve) */
+.glow-text-blue,
 .glow-text-purple {
-  text-shadow: 0 0 30px rgba(138, 43, 226, 0.7);
+  text-shadow: none;
 }
 
-/* Purple leads, cyan accents */
+/* ── Signature brand gradient (violet → magenta → pink) ── */
 .gradient-text {
-  background: linear-gradient(135deg, #8A2BE2 0%, #00D4FF 100%);
+  background: linear-gradient(135deg, #7C3AED 0%, #C026D3 60%, #EC4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 .gradient-text-reverse {
-  background: linear-gradient(135deg, #00D4FF 0%, #8A2BE2 100%);
+  background: linear-gradient(135deg, #EC4899 0%, #C026D3 40%, #7C3AED 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+/* matches the .btn-cta gradient (violet → magenta → orange) */
+.gradient-text-cta {
+  background: linear-gradient(95deg, #7C3AED 0%, #9333EA 34%, #DB2777 70%, #FB923C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-brand {
+  background: linear-gradient(95deg, #7C3AED 0%, #9333EA 36%, #DB2777 72%, #FB923C 100%);
+}
+/* warm logo gradient */
+.gradient-logo {
+  background: linear-gradient(135deg, #FB923C 0%, #EC4899 50%, #7C3AED 100%);
 }
 
 .gradient-border {
   position: relative;
-  background: rgba(255, 255, 255, 0.04);
+  background: #FFFFFF;
   border-radius: inherit;
 }
 .gradient-border::before {
@@ -116,86 +167,131 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(138, 43, 226, 0.6), rgba(0, 212, 255, 0.3));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.5), rgba(192, 38, 211, 0.3));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 
-/* Purple-dominant neon button */
-.btn-neon {
-  background: linear-gradient(135deg, #8A2BE2, #6B21D4, #00D4FF);
+/* ── Primary gradient button (legacy name btn-neon kept) ──
+   warm brand gradient (violet → magenta → orange), matches .btn-cta */
+.btn-neon,
+.btn-primary {
+  background: linear-gradient(95deg, #7C3AED 0%, #9333EA 36%, #DB2777 72%, #FB923C 100%);
   color: #fff;
   font-weight: 600;
   border: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
-.btn-neon:hover {
-  transform: scale(1.03);
-  box-shadow: 0 0 25px rgba(138, 43, 226, 0.5), 0 0 50px rgba(138, 43, 226, 0.25), 0 0 20px rgba(0, 212, 255, 0.15);
-  opacity: 0.95;
+.btn-neon:hover,
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(219, 39, 119, 0.34);
+  filter: brightness(1.03);
 }
-.btn-neon:active {
-  transform: scale(0.98);
+.btn-neon:active,
+.btn-primary:active {
+  transform: translateY(0) scale(0.99);
 }
 
+/* CTA button — logo gradient (violet → magenta → orange) */
+.btn-cta {
+  background: linear-gradient(95deg, #7C3AED 0%, #9333EA 36%, #DB2777 72%, #FB923C 100%);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 8px 22px rgba(124, 58, 237, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.btn-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(219, 39, 119, 0.34);
+  filter: brightness(1.03);
+}
+.btn-cta:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* secondary (white) button */
+.btn-secondary {
+  background: #FFFFFF;
+  color: #1C1530;
+  font-weight: 600;
+  border: 1px solid #DDD7EC;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.btn-secondary:hover {
+  background: #F6F3FD;
+  border-color: #C9C0E4;
+}
+
+/* ── Light lavender ambient background ── */
 .animated-bg {
-  background: radial-gradient(ellipse at 20% 50%, rgba(138, 43, 226, 0.18) 0%, transparent 60%),
-              radial-gradient(ellipse at 80% 20%, rgba(138, 43, 226, 0.10) 0%, transparent 50%),
-              radial-gradient(ellipse at 60% 80%, rgba(0, 212, 255, 0.06) 0%, transparent 40%),
-              #050507;
+  background:
+    radial-gradient(ellipse at 18% 30%, rgba(124, 58, 237, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 82% 12%, rgba(192, 38, 211, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 85%, rgba(236, 72, 153, 0.05) 0%, transparent 45%),
+    #F7F5FD;
 }
 
 .noise::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
   pointer-events: none;
-  opacity: 0.4;
+  opacity: 0.25;
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(138, 43, 226, 0.4); }
-  50% { box-shadow: 0 0 30px rgba(138, 43, 226, 0.7), 0 0 60px rgba(138, 43, 226, 0.3); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.0); }
+  50% { box-shadow: 0 8px 30px rgba(124, 58, 237, 0.30); }
 }
-
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
 }
-
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
+.animate-pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
+.animate-float { animation: float 4s ease-in-out infinite; }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(124, 58, 237, 0.10) 50%, transparent 100%);
   background-size: 200% auto;
   animation: shimmer 2s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-pulse-glow, .animate-shimmer { animation: none; }
+}
+
 .stage-complete { color: #22C55E; }
-.stage-active { color: #8A2BE2; }
-.stage-pending { color: #52525B; }
+.stage-active { color: #7C3AED; }
+.stage-pending { color: #A8A2BC; }
 .stage-failed { color: #EF4444; }
 
 ::selection {
-  background: rgba(138, 43, 226, 0.3);
-  color: #fff;
+  background: rgba(124, 58, 237, 0.18);
+  color: #1C1530;
+}
+
+/* Tailwind v4 dropped the default pointer cursor on buttons — restore it globally. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }

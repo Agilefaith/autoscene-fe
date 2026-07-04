@@ -1,23 +1,23 @@
 import Navbar from '@/components/layout/Navbar';
+import BackgroundDecor from '@/components/layout/BackgroundDecor';
 import HeroSection from '@/components/landing/HeroSection';
-import LivePreviewSection from '@/components/landing/LivePreviewSection';
+import FeatureBar from '@/components/landing/FeatureBar';
 import HowItWorksSection from '@/components/landing/HowItWorksSection';
-import FeaturesSection from '@/components/landing/FeaturesSection';
+import PopularNichesSection from '@/components/landing/PopularNichesSection';
 import PricingSection from '@/components/landing/PricingSection';
 import CTASection from '@/components/landing/CTASection';
-import SiteFooter from '@/components/layout/SiteFooter';
 
 export default function LandingPage() {
   return (
     <main className="relative">
+      <BackgroundDecor />
       <Navbar />
       <HeroSection />
-      <LivePreviewSection />
+      <FeatureBar />
       <HowItWorksSection />
-      <FeaturesSection />
+      <PopularNichesSection />
       <PricingSection />
       <CTASection />
-      <SiteFooter />
     </main>
   );
 }

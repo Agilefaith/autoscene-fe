@@ -15,13 +15,13 @@ interface JobProgressProps {
 const statusIcon = (status: PipelineStageItem['status']) => {
   switch (status) {
     case 'complete':
-      return <CheckCircle className="w-5 h-5 text-[#22C55E] shrink-0" />;
+      return <CheckCircle className="w-5 h-5 text-success shrink-0" />;
     case 'active':
-      return <Loader2 className="w-5 h-5 text-[#00D4FF] shrink-0 animate-spin" />;
+      return <Loader2 className="w-5 h-5 text-primary shrink-0 animate-spin" />;
     case 'failed':
-      return <XCircle className="w-5 h-5 text-[#EF4444] shrink-0" />;
+      return <XCircle className="w-5 h-5 text-error shrink-0" />;
     default:
-      return <Circle className="w-5 h-5 text-[#3F3F46] shrink-0" />;
+      return <Circle className="w-5 h-5 text-[#C9C3DC] shrink-0" />;
   }
 };
 
@@ -37,7 +37,7 @@ export default function JobProgress({ stages }: JobProgressProps) {
           className={cn(
             'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300',
             stage.status === 'active'
-              ? 'bg-[rgba(0,212,255,0.07)] border border-[#00D4FF]/20 shadow-[0_0_12px_rgba(0,212,255,0.08)]'
+              ? 'bg-primary-50 border border-primary/15'
               : 'bg-transparent'
           )}
         >
@@ -49,27 +49,27 @@ export default function JobProgress({ stages }: JobProgressProps) {
             className={cn(
               'flex-1 text-sm font-medium',
               stage.status === 'complete'
-                ? 'text-[#A1A1AA]'
+                ? 'text-text-secondary'
                 : stage.status === 'active'
-                  ? 'text-white'
+                  ? 'text-text'
                   : stage.status === 'failed'
-                    ? 'text-[#EF4444]'
-                    : 'text-[#3F3F46]'
+                    ? 'text-error'
+                    : 'text-text-muted'
             )}
           >
             {stage.name}
           </span>
 
           {stage.status === 'complete' && stage.duration && (
-            <span className="text-xs text-[#22C55E] font-medium shrink-0">{stage.duration}</span>
+            <span className="text-xs text-success font-medium shrink-0">{stage.duration}</span>
           )}
 
           {stage.status === 'active' && (
-            <span className="text-xs text-[#00D4FF] animate-pulse shrink-0">In progress…</span>
+            <span className="text-xs text-primary animate-pulse shrink-0">In progress…</span>
           )}
 
           {stage.status === 'failed' && (
-            <span className="text-xs text-[#EF4444] shrink-0">Failed</span>
+            <span className="text-xs text-error shrink-0">Failed</span>
           )}
         </motion.div>
       ))}

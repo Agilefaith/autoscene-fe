@@ -4,9 +4,24 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, MailCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import Logo from '@/components/layout/Logo';
+
+const passwordRules = [
+  { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { label: 'Uppercase letter (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Lowercase letter (a-z)', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Symbol (!@#$...)',        test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
+const inputClass = cn(
+  'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-text placeholder-text-muted',
+  'bg-surface-muted border border-border',
+  'focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20',
+  'transition-all duration-200'
+);
 
 export default function SignupPage() {
   const router = useRouter();
@@ -18,27 +33,44 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const passwordStrength = passwordRules.filter((r) => r.test(password)).length;
+  const passwordValid = passwordStrength === passwordRules.length;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-      },
+    if (!passwordValid) {
+      setError('Password does not meet all security requirements.');
+      return;
+    }
+
+    setLoading(true);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+    const res = await fetch(`${apiUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
     });
 
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.detail ?? 'Failed to create account. Please try again.');
       setLoading(false);
       return;
     }
 
-    setSuccess(true);
+    // Auto login setelah signup berhasil
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
     setLoading(false);
+    router.push('/dashboard');
   };
 
   const handleGoogleOAuth = async () => {
@@ -58,18 +90,18 @@ export default function SignupPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-md text-center"
         >
-          <div className="glass gradient-border rounded-2xl p-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00D4FF] to-[#8A2BE2] flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-7 h-7 text-white" />
+          <div className="rounded-2xl bg-surface border border-border glow-panel p-10">
+            <div className="w-14 h-14 rounded-2xl gradient-brand glow-cta flex items-center justify-center mx-auto mb-6">
+              <MailCheck className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Check your email</h2>
-            <p className="text-sm text-[#71717A] leading-relaxed mb-6">
-              We sent a confirmation link to <span className="text-white font-medium">{email}</span>.
+            <h2 className="text-2xl font-display font-bold text-text mb-3">Check your email</h2>
+            <p className="text-sm text-text-muted leading-relaxed mb-6">
+              We sent a confirmation link to <span className="text-text font-medium">{email}</span>.
               Click it to activate your account.
             </p>
             <Link
               href="/login"
-              className="text-sm text-[#00D4FF] hover:text-white transition-colors font-medium"
+              className="text-sm text-primary hover:text-primary-dark transition-colors font-semibold"
             >
               Back to sign in
             </Link>
@@ -83,7 +115,7 @@ export default function SignupPage() {
     <div className="min-h-screen animated-bg flex items-center justify-center px-4 py-16 relative">
       <Link
         href="/"
-        className="absolute top-6 left-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-[#A1A1AA] hover:text-white border border-white/[0.10] hover:border-white/25 hover:bg-white/[0.05] transition-all duration-200"
+        className="absolute top-6 left-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-text-muted hover:text-text border border-border hover:border-border-strong hover:bg-surface transition-all duration-200"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to home
@@ -95,119 +127,135 @@ export default function SignupPage() {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="w-full max-w-md"
       >
-        <Link href="/" className="flex items-center justify-center gap-2 mb-10">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00D4FF] to-[#8A2BE2] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-2xl font-bold gradient-text tracking-tight">Vidora</span>
-        </Link>
+        <div className="flex justify-center mb-10">
+          <Logo href="/" size={34} />
+        </div>
 
-        <div className="glass gradient-border rounded-2xl p-8">
-          <h1 className="text-2xl font-bold text-white mb-2 text-center">Create your account</h1>
-          <p className="text-sm text-[#52525B] text-center mb-8">
+        <div className="rounded-2xl bg-surface border border-border glow-panel p-8">
+          <h1 className="text-2xl font-display font-bold text-text mb-2 text-center">Create your account</h1>
+          <p className="text-sm text-text-muted text-center mb-8">
             Start with 1 free video. No credit card required.
           </p>
 
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+            <div className="mb-4 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-sm text-error">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#A1A1AA]">Full name</label>
+              <label className="text-xs font-medium text-text-secondary">Full name</label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#52525B]" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                   placeholder="Jane Smith"
-                  className={cn(
-                    'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-[#52525B]',
-                    'bg-white/[0.04] border border-white/[0.08]',
-                    'focus:outline-none focus:border-[#00D4FF]/50 focus:ring-1 focus:ring-[#00D4FF]/30',
-                    'transition-all duration-200'
-                  )}
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#A1A1AA]">Email address</label>
+              <label className="text-xs font-medium text-text-secondary">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#52525B]" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className={cn(
-                    'w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-[#52525B]',
-                    'bg-white/[0.04] border border-white/[0.08]',
-                    'focus:outline-none focus:border-[#00D4FF]/50 focus:ring-1 focus:ring-[#00D4FF]/30',
-                    'transition-all duration-200'
-                  )}
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#A1A1AA]">Password</label>
+              <label className="text-xs font-medium text-text-secondary">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#52525B]" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
-                  placeholder="At least 8 characters"
-                  className={cn(
-                    'w-full pl-10 pr-12 py-3 rounded-xl text-sm text-white placeholder-[#52525B]',
-                    'bg-white/[0.04] border border-white/[0.08]',
-                    'focus:outline-none focus:border-[#00D4FF]/50 focus:ring-1 focus:ring-[#00D4FF]/30',
-                    'transition-all duration-200'
-                  )}
+                  placeholder="Min. 8 chars, uppercase, symbol"
+                  className={cn(inputClass, 'pr-12')}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#52525B] hover:text-[#A1A1AA] transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Strength bar */}
+              {password.length > 0 && (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <div className="flex gap-1">
+                    {passwordRules.map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'h-1 flex-1 rounded-full transition-all duration-300',
+                          i < passwordStrength
+                            ? passwordStrength === 4 ? 'bg-success'
+                              : passwordStrength >= 2 ? 'bg-warning'
+                              : 'bg-error'
+                            : 'bg-border'
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {passwordRules.map((rule) => (
+                      <span
+                        key={rule.label}
+                        className={cn(
+                          'text-[11px] flex items-center gap-1.5 transition-colors',
+                          rule.test(password) ? 'text-success' : 'text-text-muted'
+                        )}
+                      >
+                        <span>{rule.test(password) ? '✓' : '○'}</span>
+                        {rule.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <p className="text-[10px] text-[#52525B] text-center leading-relaxed">
+            <p className="text-[10px] text-text-muted text-center leading-relaxed">
               By creating an account you agree to our{' '}
-              <a href="#" className="text-[#A1A1AA] hover:text-white transition-colors">Terms of Service</a>{' '}
+              <a href="#" className="text-text-secondary hover:text-primary transition-colors">Terms of Service</a>{' '}
               and{' '}
-              <a href="#" className="text-[#A1A1AA] hover:text-white transition-colors">Privacy Policy</a>.
+              <a href="#" className="text-text-secondary hover:text-primary transition-colors">Privacy Policy</a>.
             </p>
 
             <button
               type="submit"
-              disabled={loading}
-              className="btn-neon w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={loading || !passwordValid}
+              className="btn-cta w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
           <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <span className="text-xs text-[#52525B]">or continue with</span>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-text-muted">or continue with</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
           <button
             onClick={handleGoogleOAuth}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-white/[0.08] text-sm text-[#A1A1AA] hover:text-white hover:bg-white/[0.04] hover:border-white/20 transition-all duration-200 font-medium"
+            className="btn-secondary w-full flex items-center justify-center gap-3 py-3 rounded-xl text-sm font-medium"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -218,9 +266,9 @@ export default function SignupPage() {
             Continue with Google
           </button>
 
-          <p className="text-center text-xs text-[#52525B] mt-6">
+          <p className="text-center text-xs text-text-muted mt-6">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#00D4FF] hover:text-white transition-colors font-medium">
+            <Link href="/login" className="text-primary hover:text-primary-dark transition-colors font-semibold">
               Sign in
             </Link>
           </p>

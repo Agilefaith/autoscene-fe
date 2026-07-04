@@ -8,3 +8,9 @@ const supabaseUrl = rawUrl.startsWith('https://') || rawUrl.startsWith('http://'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/** Always returns a fresh access token — use this before any backend API call. */
+export async function getAccessToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? '';
+}
