@@ -73,6 +73,8 @@ export default function ScriptsPage() {
           target_audience: script.target_audience,
           goal: script.goal,
           style: script.style,
+          niche: script.niche,
+          duration_seconds: script.duration_seconds,
         }),
       });
       if (res.ok) {

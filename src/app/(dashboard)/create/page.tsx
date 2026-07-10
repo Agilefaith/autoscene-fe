@@ -456,7 +456,7 @@ function CreateWizard() {
     } catch (e) { setError((e as Error).message); } finally { setGenLoading(false); }
   };
 
-  const saveScript = async (): Promise<string | null> => {
+  const saveScript = async (durationOverride?: number): Promise<string | null> => {
     if (scriptId) return scriptId;
     const content = scriptMode === 'custom' ? customScript.trim() : generated.trim();
     if (!content) { setError('Please provide a script first.'); return null; }
@@ -467,7 +467,7 @@ function CreateWizard() {
           title: aiTitle.trim() || 'Untitled Script', content, mode: scriptMode,
           product_name: aiProduct.trim() || null, tone: aiTone,
           target_audience: aiAudience.trim() || null, goal: aiGoal, style: aiStyle,
-          niche: niche || null, duration_seconds: durationSeconds,
+          niche: niche || null, duration_seconds: durationOverride ?? durationSeconds,
         }),
       });
       setScriptId(s.id);
@@ -496,15 +496,21 @@ function CreateWizard() {
     setTimeout(poll, 2000);
   }, [renderMode, format, style, niche, durationSeconds]);
 
-  // Step 1 (Script → Configure): save script + derive the video length from it.
+  // Step 1 (Script → Configure): save script + set the video length.
+  // AI mode: the user's chosen Target length is the source of truth for the video
+  // (scene count / credits / render all key off it). Custom scripts have no target,
+  // so their length is derived from the pasted text (snapped to a length option).
   const handleScriptNext = async () => {
     setError(''); setBusy(true);
     try {
-      const sid = await saveScript();
+      const nextDuration = scriptMode === 'ai'
+        ? Math.min(aiSeconds, planCap)
+        : LENGTH_OPTIONS.reduce((best, o) =>
+            Math.abs(o.seconds - scriptSeconds) < Math.abs(best.seconds - scriptSeconds) ? o : best,
+            LENGTH_OPTIONS[1]).seconds;
+      const sid = await saveScript(nextDuration);
       if (!sid) return;
-      const seconds = LENGTH_OPTIONS.reduce((best, o) =>
-        Math.abs(o.seconds - scriptSeconds) < Math.abs(best.seconds - scriptSeconds) ? o : best, LENGTH_OPTIONS[1]).seconds;
-      setDurationSeconds(seconds);
+      setDurationSeconds(nextDuration);
       setStep(1);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
@@ -873,7 +879,15 @@ function CreateWizard() {
                         <div>
                           <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Generated script</label>
                           <div className="mt-2 rounded-xl border border-border bg-surface-muted p-4 text-sm text-text leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto">{generated}</div>
-                          <p className="text-xs text-text-muted mt-1">~{estimateScriptSeconds(generated)}s spoken · this is the final AI script — to change it, adjust the fields and Generate again</p>
+                          <p className="text-xs text-text-muted mt-1">~{estimateScriptSeconds(generated)}s spoken · target {formatDuration(Math.min(aiSeconds, planCap))} · this is the final AI script — to change it, adjust the fields and Generate again</p>
+                          {Math.abs(estimateScriptSeconds(generated) - Math.min(aiSeconds, planCap)) / Math.min(aiSeconds, planCap) > 0.25 && (
+                            <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+                              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>
+                                The script reads at ~{estimateScriptSeconds(generated)}s but your target is {formatDuration(Math.min(aiSeconds, planCap))}. The video uses your target length, so {estimateScriptSeconds(generated) < Math.min(aiSeconds, planCap) ? 'scenes may feel stretched — Generate again to fill the full duration.' : 'the narration may feel rushed — Generate again or pick a longer target.'}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1052,7 +1066,7 @@ function CreateWizard() {
                         <Field label="Video Length">
                           <div className="w-full px-3 py-2.5 rounded-xl border border-border bg-surface-muted text-sm flex items-center justify-between">
                             <span className="text-text">{LENGTH_OPTIONS.find((o) => o.seconds === durationSeconds)?.label ?? `${durationSeconds}s`}</span>
-                            <span className="text-[10px] text-text-muted">from script</span>
+                            <span className="text-[10px] text-text-muted">{scriptMode === 'ai' ? 'from target' : 'from script'}</span>
                           </div>
                         </Field>
                         <Field label="Video Style"><CustomSelect value={style} onChange={setStyle} options={STYLE_OPTIONS} /></Field>
@@ -1306,12 +1320,13 @@ function WaveBars() {
   );
 }
 
-// Actual SDXL/render canvas dimensions (CLAUDE.md §SDXL Integration) — the preview
-// scales font_size against these so text occupies the same on-screen fraction as
-// it will in the real burned-in video, instead of using the raw px value 1:1.
+// Final render canvas dimensions (backend RENDER_DIMENSIONS, common.py) — this is
+// the canvas subtitles are actually burned onto, so the preview scales font_size
+// against these (not the smaller SDXL image-gen canvas) so text occupies the same
+// on-screen fraction as it will in the real burned-in video.
 const CANVAS_DIMENSIONS: Record<Format, { w: number; h: number }> = {
-  '9:16': { w: 768, h: 1344 },
-  '16:9': { w: 1344, h: 768 },
+  '9:16': { w: 1080, h: 1920 },
+  '16:9': { w: 1920, h: 1080 },
 };
 // Sized for the 380px sticky preview column (see xl:grid-cols-[1fr_380px]).
 const PREVIEW_HEIGHT = 600;
