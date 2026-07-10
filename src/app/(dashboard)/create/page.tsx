@@ -131,10 +131,13 @@ const TONE_OPTIONS = [
   { value: 'casual', label: 'Casual' }, { value: 'inspiring', label: 'Inspiring' },
 ];
 
+// Common subtitle/caption colors (YouTube, broadcast/EBU caption conventions).
 const SUBTITLE_COLORS = [
-  { label: 'White', value: '#FFFFFF' }, { label: 'Yellow', value: '#FBBF24' },
-  { label: 'Violet', value: '#7C3AED' }, { label: 'Green', value: '#22C55E' },
-  { label: 'Pink', value: '#EC4899' }, { label: 'Black', value: '#111111' },
+  { label: 'White', value: '#FFFFFF' }, { label: 'Black', value: '#111111' },
+  { label: 'Yellow', value: '#FBBF24' }, { label: 'Cyan', value: '#22D3EE' },
+  { label: 'Green', value: '#22C55E' }, { label: 'Red', value: '#EF4444' },
+  { label: 'Blue', value: '#3B82F6' }, { label: 'Orange', value: '#F97316' },
+  { label: 'Magenta', value: '#EC4899' },
 ];
 const SUBTITLE_STYLES: { value: SubtitleStyleOption; label: string }[] = [
   { value: 'bold', label: 'Bold' }, { value: 'sans', label: 'Sans' },
@@ -994,6 +997,9 @@ function CreateWizard() {
                   <StepHeader icon={<Settings2 className="w-5 h-5" />} title="Configure your video"
                     desc="Choose your rendering mode and settings, then let AI bring your story to life." />
 
+                  <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
+                  <div className="space-y-6 min-w-0">
+
                   {/* Rendering mode */}
                   <div>
                     <SectionLabel icon={<Camera className="w-4 h-4" />} text="Visual Rendering Mode" />
@@ -1023,7 +1029,7 @@ function CreateWizard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                     {/* Video settings */}
                     <div className="glass rounded-2xl p-5 space-y-4">
                       <SectionLabel icon={<Settings2 className="w-4 h-4" />} text="Video Settings" />
@@ -1079,9 +1085,11 @@ function CreateWizard() {
                     </div>
 
                     {/* Voiceover */}
-                    <div className="glass rounded-2xl p-5 space-y-4">
+                    {/* max-h caps this card at roughly Video Settings' natural height, so
+                        items-stretch can't let the voice list balloon the shared row taller. */}
+                    <div className="glass rounded-2xl p-5 space-y-4 flex flex-col max-h-[450px]">
                       <SectionLabel icon={<Play className="w-4 h-4" />} text="Voiceover" />
-                      <div className="inline-flex rounded-xl bg-surface-muted p-1">
+                      <div className="self-start inline-flex rounded-xl bg-surface-muted p-1">
                         {(['preset', 'custom'] as const).map((t) => (
                           <button key={t} onClick={() => setVoiceTab(t)} className={cn('px-4 py-1.5 rounded-lg text-sm font-medium transition-colors', voiceTab === t ? 'bg-white text-primary shadow-card' : 'text-text-muted hover:text-text')}>
                             {t === 'preset' ? 'Preset Voices' : 'Custom Voice'}
@@ -1089,7 +1097,7 @@ function CreateWizard() {
                         ))}
                       </div>
                       {voiceTab === 'preset' ? (
-                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                        <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
                           {savedVoices.map((v) => (
                             <VoiceRow key={v.id} name={v.name} sub={`${v.provider}${v.is_custom ? ' · custom' : ''}`} active={selectedSavedId === v.id}
                               onClick={() => { setSelectedSavedId(v.id); setSelectedPreset(null); }} />
@@ -1120,30 +1128,52 @@ function CreateWizard() {
                       </button>
                     </div>
                     {subtitle.enabled && (
-                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 content-start">
-                          <Field label="Font"><CustomSelect value={subtitle.font_style} onChange={(v) => setSubtitle((s) => ({ ...s, font_style: v as SubtitleStyleOption }))} options={SUBTITLE_STYLES} /></Field>
-                          <Field label="Size">
-                            <div className="flex gap-1.5">
-                              {SUBTITLE_SIZES.map((sz) => (
-                                <button key={sz.value} onClick={() => setSubtitle((s) => ({ ...s, font_size: sz.value }))}
-                                  className={cn('flex-1 py-2 rounded-lg text-xs font-medium border', subtitle.font_size === sz.value ? 'border-primary bg-primary-50 text-primary' : 'border-border text-text-muted hover:border-primary/40')}>{sz.label}</button>
-                              ))}
-                            </div>
-                          </Field>
-                          <Field label="Color">
-                            <div className="flex gap-1.5 flex-wrap">
-                              {SUBTITLE_COLORS.map((c) => (
-                                <button key={c.value} onClick={() => setSubtitle((s) => ({ ...s, font_color: c.value }))} title={c.label}
-                                  className={cn('w-7 h-7 rounded-lg border-2', subtitle.font_color === c.value ? 'border-primary' : 'border-border')} style={{ background: c.value }} />
-                              ))}
-                            </div>
-                          </Field>
-                          <Field label="Position"><CustomSelect value={subtitle.placement} onChange={(v) => setSubtitle((s) => ({ ...s, placement: v as SubtitlePlacement }))} options={[{ value: 'top', label: 'Top' }, { value: 'center', label: 'Center' }, { value: 'bottom', label: 'Bottom' }]} /></Field>
-                        </div>
-                        <SubtitlePreview subtitle={subtitle} format={format} />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Field label="Font"><CustomSelect value={subtitle.font_style} onChange={(v) => setSubtitle((s) => ({ ...s, font_style: v as SubtitleStyleOption }))} options={SUBTITLE_STYLES} /></Field>
+                        <Field label="Size">
+                          <div className="flex gap-1.5">
+                            {SUBTITLE_SIZES.map((sz) => (
+                              <button key={sz.value} onClick={() => setSubtitle((s) => ({ ...s, font_size: sz.value }))}
+                                className={cn('flex-1 py-2 rounded-lg text-xs font-medium border', subtitle.font_size === sz.value ? 'border-primary bg-primary-50 text-primary' : 'border-border text-text-muted hover:border-primary/40')}>{sz.label}</button>
+                            ))}
+                          </div>
+                        </Field>
+                        <Field label="Color">
+                          <div className="flex gap-1.5 flex-wrap">
+                            {SUBTITLE_COLORS.map((c) => (
+                              <button key={c.value} onClick={() => setSubtitle((s) => ({ ...s, font_color: c.value }))} title={c.label}
+                                className={cn('w-7 h-7 rounded-lg border-2', subtitle.font_color === c.value ? 'border-primary' : 'border-border')} style={{ background: c.value }} />
+                            ))}
+                            <label
+                              title="Custom color"
+                              className={cn(
+                                'relative w-7 h-7 rounded-lg border-2 cursor-pointer overflow-hidden',
+                                !SUBTITLE_COLORS.some((c) => c.value === subtitle.font_color) ? 'border-primary' : 'border-border'
+                              )}
+                              style={{ background: 'conic-gradient(from 0deg, red, yellow, lime, cyan, blue, magenta, red)' }}
+                            >
+                              <input
+                                type="color"
+                                value={subtitle.font_color}
+                                onChange={(e) => setSubtitle((s) => ({ ...s, font_color: e.target.value.toUpperCase() }))}
+                                className="absolute -inset-1 opacity-0 cursor-pointer"
+                              />
+                            </label>
+                          </div>
+                        </Field>
+                        <Field label="Position"><CustomSelect value={subtitle.placement} onChange={(v) => setSubtitle((s) => ({ ...s, placement: v as SubtitlePlacement }))} options={[{ value: 'top', label: 'Top' }, { value: 'center', label: 'Center' }, { value: 'bottom', label: 'Bottom' }]} /></Field>
                       </div>
                     )}
+                  </div>
+
+                  </div>
+
+                  {/* Live preview — sticky, mirrors the actual render frame + subtitle overlay */}
+                  <div className="xl:sticky xl:top-6">
+                    <label className="block text-xs font-semibold text-text-secondary mb-1.5">Preview</label>
+                    <SubtitlePreview subtitle={subtitle} format={format} />
+                  </div>
+
                   </div>
                 </div>
               )}
@@ -1233,6 +1263,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><label className="block text-xs font-semibold text-text-secondary mb-1.5">{label}</label>{children}</div>;
 }
 
+// One setting per row (label left, control right) — used to keep a settings card
+// narrow/tall so a preview panel next to it can stretch taller instead of wider.
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-4">
+      <label className="w-16 shrink-0 text-xs font-semibold text-text-secondary">{label}</label>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return <div className="flex items-center justify-between text-sm"><span className="text-text-muted">{label}</span><span className="text-text font-medium">{value}</span></div>;
 }
@@ -1269,32 +1310,35 @@ const CANVAS_DIMENSIONS: Record<Format, { w: number; h: number }> = {
   '9:16': { w: 768, h: 1344 },
   '16:9': { w: 1344, h: 768 },
 };
-const PREVIEW_HEIGHT = 320;
+// Sized for the 380px sticky preview column (see xl:grid-cols-[1fr_380px]).
+const PREVIEW_HEIGHT = 600;
 
 function SubtitlePreview({ subtitle, format }: { subtitle: SubtitleSettingsState; format: Format }) {
   const portrait = format === '9:16';
   const canvas = CANVAS_DIMENSIONS[format];
-  const alignClass = subtitle.placement === 'top' ? 'items-start pt-4'
-    : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-4';
+  const alignClass = subtitle.placement === 'top' ? 'items-start pt-6'
+    : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-6';
   // Matches the real render's framing (see Preview()): portrait is height-driven,
   // landscape is width-driven, so the on-screen shape matches the actual export.
   const frameHeight = portrait ? PREVIEW_HEIGHT : PREVIEW_HEIGHT * (9 / 16);
   const frameStyle: React.CSSProperties = portrait
     ? { height: frameHeight, aspectRatio: '9 / 16' }
-    : { width: frameHeight * (16 / 9), aspectRatio: '16 / 9' };
+    : { width: '100%', aspectRatio: '16 / 9' };
   // font_size is authored against the real canvas height, so scale it by how much
   // smaller the preview frame is — same on-screen proportion as the real render.
   const previewFontSize = subtitle.font_size * (frameHeight / canvas.h);
 
   return (
-    <div>
-      <label className="block text-xs font-semibold text-text-secondary mb-1.5">Preview</label>
-      <div
-        className={cn('relative mx-auto rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-3', alignClass)}
-        style={frameStyle}
-      >
+    <div
+      className={cn('relative mx-auto rounded-2xl overflow-hidden bg-gradient-to-b from-[#1C1530] to-[#0F0A1C] border border-border shadow-panel flex justify-center px-6', alignClass)}
+      style={{ ...frameStyle, maxWidth: '100%' }}
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Play className="w-12 h-12 text-white/10" />
+      </div>
+      {subtitle.enabled && (
         <span
-          className="text-center max-w-full break-words leading-tight"
+          className="relative text-center max-w-full break-words leading-tight"
           style={{
             color: subtitle.font_color,
             fontFamily: SUBTITLE_FONT_FAMILY[subtitle.font_style],
@@ -1306,7 +1350,7 @@ function SubtitlePreview({ subtitle, format }: { subtitle: SubtitleSettingsState
         >
           Like this, your subtitles will appear
         </span>
-      </div>
+      )}
     </div>
   );
 }
