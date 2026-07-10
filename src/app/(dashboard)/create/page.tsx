@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { inputClass } from '@/lib/styles';
 import { useConfirm, useToast } from '@/components/ui/ConfirmProvider';
 import { useAuth } from '@/context/AuthContext';
-import { planById, formatDuration } from '@/data/plans';
+import { resolvePlan, formatDuration } from '@/data/plans';
 import { TEMPLATES } from '@/data/templates';
 import JobProgress, { PIPELINE_STAGES, type PipelineStageItem } from '@/components/jobs/JobProgress';
 import type { Script } from '@/types/script';
@@ -283,7 +283,8 @@ function CreateWizard() {
 
   // The signed-in plan caps how long a video can be (quota model). AI target
   // lengths and the duration shown are limited to this.
-  const planCap = planById(profile?.plan_tier).maxSeconds;
+  const plan = resolvePlan(profile?.user_type, profile?.plan_tier);
+  const planCap = plan.maxSeconds;
   const lengthOptions = LENGTH_OPTIONS.filter((o) => o.seconds <= planCap);
 
   const uploadReference = async (file: File) => {
@@ -847,7 +848,7 @@ function CreateWizard() {
                         <Field label="Title / concept"><input className={inputClass} value={aiTitle} onChange={(e) => setAiTitle(e.target.value)} placeholder="e.g. Discipline beats motivation" /></Field>
                         <Field label="Product / topic"><input className={inputClass} value={aiProduct} onChange={(e) => setAiProduct(e.target.value)} placeholder="optional" /></Field>
                         <Field label="Audience"><input className={inputClass} value={aiAudience} onChange={(e) => setAiAudience(e.target.value)} placeholder="e.g. young creators" /></Field>
-                        <Field label={`Target length · ${planById(profile?.plan_tier).name} allows up to ${formatDuration(planCap)}`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
+                        <Field label={`Target length · ${plan.name} allows up to ${formatDuration(planCap)}`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
                         <Field label="Goal"><CustomSelect value={aiGoal} onChange={setAiGoal} options={GOAL_OPTIONS} /></Field>
                         <Field label="Style"><CustomSelect value={aiStyle} onChange={setAiStyle} options={SCRIPT_STYLE_OPTIONS} /></Field>
                         <Field label="Tone"><CustomSelect value={aiTone} onChange={setAiTone} options={TONE_OPTIONS} /></Field>

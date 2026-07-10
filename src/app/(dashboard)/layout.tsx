@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import Logo from '@/components/layout/Logo';
 import { ConfirmProvider } from '@/components/ui/ConfirmProvider';
-import { planById } from '@/data/plans';
+import { resolvePlan } from '@/data/plans';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'User';
   const displayEmail = user?.email ?? '';
   const initials = displayName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-  const plan = planById(profile?.plan_tier);
+  const plan = resolvePlan(profile?.user_type, profile?.plan_tier);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));

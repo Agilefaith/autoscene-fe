@@ -63,6 +63,20 @@ export const PLAN_CATALOG: PlanDef[] = [
 export const PLAN_IDS = PLAN_CATALOG.map((p) => p.id);
 export const PAID_PLANS = PLAN_CATALOG.filter((p) => p.id !== 'free');
 
+// Internal accounts (user_type='internal') bypass the public plan catalog
+// entirely — this is not a purchasable plan, so it's kept out of
+// PLAN_CATALOG/PAID_PLANS to avoid it ever rendering on pricing/billing pages.
+export const INTERNAL_PLAN: PlanDef = {
+  id: 'scale_m2', name: 'Internal', price: 0, videosPerMonth: Infinity, maxSeconds: 1800, mode: 'mode_2',
+  imagesPerScene: 3, queue: 'Priority queue',
+  features: ['Unlimited internal access'],
+};
+
 export function planById(id: string | null | undefined): PlanDef {
   return PLAN_CATALOG.find((p) => p.id === id) ?? PLAN_CATALOG[0];
+}
+
+export function resolvePlan(userType: string | null | undefined, planTier: string | null | undefined): PlanDef {
+  if (userType === 'internal') return INTERNAL_PLAN;
+  return planById(planTier);
 }
