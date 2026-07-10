@@ -1120,28 +1120,30 @@ function CreateWizard() {
                       </button>
                     </div>
                     {subtitle.enabled && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Field label="Font"><CustomSelect value={subtitle.font_style} onChange={(v) => setSubtitle((s) => ({ ...s, font_style: v as SubtitleStyleOption }))} options={SUBTITLE_STYLES} /></Field>
-                        <Field label="Size">
-                          <div className="flex gap-1.5">
-                            {SUBTITLE_SIZES.map((sz) => (
-                              <button key={sz.value} onClick={() => setSubtitle((s) => ({ ...s, font_size: sz.value }))}
-                                className={cn('flex-1 py-2 rounded-lg text-xs font-medium border', subtitle.font_size === sz.value ? 'border-primary bg-primary-50 text-primary' : 'border-border text-text-muted hover:border-primary/40')}>{sz.label}</button>
-                            ))}
-                          </div>
-                        </Field>
-                        <Field label="Color">
-                          <div className="flex gap-1.5 flex-wrap">
-                            {SUBTITLE_COLORS.map((c) => (
-                              <button key={c.value} onClick={() => setSubtitle((s) => ({ ...s, font_color: c.value }))} title={c.label}
-                                className={cn('w-7 h-7 rounded-lg border-2', subtitle.font_color === c.value ? 'border-primary' : 'border-border')} style={{ background: c.value }} />
-                            ))}
-                          </div>
-                        </Field>
-                        <Field label="Position"><CustomSelect value={subtitle.placement} onChange={(v) => setSubtitle((s) => ({ ...s, placement: v as SubtitlePlacement }))} options={[{ value: 'top', label: 'Top' }, { value: 'center', label: 'Center' }, { value: 'bottom', label: 'Bottom' }]} /></Field>
+                      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 content-start">
+                          <Field label="Font"><CustomSelect value={subtitle.font_style} onChange={(v) => setSubtitle((s) => ({ ...s, font_style: v as SubtitleStyleOption }))} options={SUBTITLE_STYLES} /></Field>
+                          <Field label="Size">
+                            <div className="flex gap-1.5">
+                              {SUBTITLE_SIZES.map((sz) => (
+                                <button key={sz.value} onClick={() => setSubtitle((s) => ({ ...s, font_size: sz.value }))}
+                                  className={cn('flex-1 py-2 rounded-lg text-xs font-medium border', subtitle.font_size === sz.value ? 'border-primary bg-primary-50 text-primary' : 'border-border text-text-muted hover:border-primary/40')}>{sz.label}</button>
+                              ))}
+                            </div>
+                          </Field>
+                          <Field label="Color">
+                            <div className="flex gap-1.5 flex-wrap">
+                              {SUBTITLE_COLORS.map((c) => (
+                                <button key={c.value} onClick={() => setSubtitle((s) => ({ ...s, font_color: c.value }))} title={c.label}
+                                  className={cn('w-7 h-7 rounded-lg border-2', subtitle.font_color === c.value ? 'border-primary' : 'border-border')} style={{ background: c.value }} />
+                              ))}
+                            </div>
+                          </Field>
+                          <Field label="Position"><CustomSelect value={subtitle.placement} onChange={(v) => setSubtitle((s) => ({ ...s, placement: v as SubtitlePlacement }))} options={[{ value: 'top', label: 'Top' }, { value: 'center', label: 'Center' }, { value: 'bottom', label: 'Bottom' }]} /></Field>
+                        </div>
+                        <SubtitlePreview subtitle={subtitle} format={format} />
                       </div>
                     )}
-                    {subtitle.enabled && <SubtitlePreview subtitle={subtitle} format={format} />}
                   </div>
                 </div>
               )}
@@ -1260,29 +1262,43 @@ function WaveBars() {
   );
 }
 
+// Actual SDXL/render canvas dimensions (CLAUDE.md §SDXL Integration) — the preview
+// scales font_size against these so text occupies the same on-screen fraction as
+// it will in the real burned-in video, instead of using the raw px value 1:1.
+const CANVAS_DIMENSIONS: Record<Format, { w: number; h: number }> = {
+  '9:16': { w: 768, h: 1344 },
+  '16:9': { w: 1344, h: 768 },
+};
+const PREVIEW_HEIGHT = 320;
+
 function SubtitlePreview({ subtitle, format }: { subtitle: SubtitleSettingsState; format: Format }) {
   const portrait = format === '9:16';
-  const alignClass = subtitle.placement === 'top' ? 'items-start pt-6'
-    : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-6';
+  const canvas = CANVAS_DIMENSIONS[format];
+  const alignClass = subtitle.placement === 'top' ? 'items-start pt-4'
+    : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-4';
   // Matches the real render's framing (see Preview()): portrait is height-driven,
   // landscape is width-driven, so the on-screen shape matches the actual export.
+  const frameHeight = portrait ? PREVIEW_HEIGHT : PREVIEW_HEIGHT * (9 / 16);
   const frameStyle: React.CSSProperties = portrait
-    ? { height: 260, aspectRatio: '9 / 16' }
-    : { width: '100%', maxWidth: 462, aspectRatio: '16 / 9' };
+    ? { height: frameHeight, aspectRatio: '9 / 16' }
+    : { width: frameHeight * (16 / 9), aspectRatio: '16 / 9' };
+  // font_size is authored against the real canvas height, so scale it by how much
+  // smaller the preview frame is — same on-screen proportion as the real render.
+  const previewFontSize = subtitle.font_size * (frameHeight / canvas.h);
 
   return (
     <div>
       <label className="block text-xs font-semibold text-text-secondary mb-1.5">Preview</label>
       <div
-        className={cn('relative mx-auto rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-6', alignClass)}
+        className={cn('relative mx-auto rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-3', alignClass)}
         style={frameStyle}
       >
         <span
-          className="text-center max-w-full break-words"
+          className="text-center max-w-full break-words leading-tight"
           style={{
             color: subtitle.font_color,
             fontFamily: SUBTITLE_FONT_FAMILY[subtitle.font_style],
-            fontSize: subtitle.font_size,
+            fontSize: previewFontSize,
             fontWeight: subtitle.font_style === 'bold' ? 700 : 400,
             fontStyle: subtitle.font_style === 'italic' ? 'italic' : 'normal',
             textShadow: '0 0 2px #000, 0 0 2px #000, 1px 1px 1px #000, -1px -1px 1px #000, 2px 2px 3px rgba(0,0,0,0.8)',
