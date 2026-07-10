@@ -6,9 +6,9 @@ export const GOAL_OPTIONS = [
 ];
 
 export const STYLE_OPTIONS = [
-  { value: 'ugc',           label: 'UGC' },
-  { value: 'ad',            label: 'Ad' },
-  { value: 'tiktok_hook',   label: 'TikTok Hook' },
-  { value: 'documentary',   label: 'Documentary' },
-  { value: 'ai_influencer', label: 'AI Influencer' },
+  { value: 'storytelling',   label: 'Storytelling' },
+  { value: 'educational',    label: 'Educational' },
+  { value: 'documentary',    label: 'Documentary' },
+  { value: 'punchy',         label: 'Punchy Hook' },
+  { value: 'conversational', label: 'Conversational' },
 ];

@@ -9,12 +9,10 @@ import { containerVariants, itemVariants } from '@/lib/animations';
 const SAMPLE_BASE = 'https://s3.us-west-004.backblazeb2.com/ai-influencer-app/style-samples';
 
 const STYLES = [
-  { value: 'cinematic', label: 'Cinematic', desc: 'Filmic lighting, shallow depth of field, dramatic mood.' },
-  { value: 'photographic', label: 'Realistic', desc: 'True-to-life photography look, natural detail.' },
-  { value: 'digital-art', label: 'Digital Art', desc: 'Clean, vibrant illustrated art style.' },
-  { value: 'anime', label: 'Anime', desc: 'Japanese animation aesthetic, bold linework.' },
-  { value: 'comic-book', label: 'Cartoon', desc: 'Comic / cartoon look with strong outlines.' },
-  { value: 'fantasy-art', label: 'Fantasy', desc: 'Painterly, epic fantasy atmosphere.' },
+  { value: 'stickman', label: 'Stickman', desc: 'Minimalist black stick-figure line drawings on white.' },
+  { value: 'cartoon', label: 'Cartoon', desc: 'Bold flat cartoon with thick outlines and vibrant colors.' },
+  { value: 'ghibli', label: 'Ghibli', desc: 'Studio Ghibli look: soft hand-painted, warm and whimsical.' },
+  { value: 'family_guy', label: 'Family Guy Style', desc: 'Flat adult-cartoon TV look with bold outlines.' },
 ];
 
 export default function StylesPage() {

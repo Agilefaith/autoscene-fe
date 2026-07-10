@@ -110,12 +110,10 @@ const LENGTH_OPTIONS: { seconds: number; label: string }[] = [
 ];
 
 const STYLE_OPTIONS = [
-  { value: 'cinematic', label: 'Cinematic' },
-  { value: 'photographic', label: 'Realistic' },
-  { value: 'digital-art', label: 'Digital Art' },
-  { value: 'anime', label: 'Anime' },
-  { value: 'comic-book', label: 'Cartoon' },
-  { value: 'fantasy-art', label: 'Fantasy' },
+  { value: 'stickman', label: 'Stickman' },
+  { value: 'cartoon', label: 'Cartoon' },
+  { value: 'ghibli', label: 'Ghibli' },
+  { value: 'family_guy', label: 'Family Guy Style' },
 ];
 
 const GOAL_OPTIONS = [
@@ -123,9 +121,9 @@ const GOAL_OPTIONS = [
   { value: 'education', label: 'Education' }, { value: 'storytelling', label: 'Storytelling' },
 ];
 const SCRIPT_STYLE_OPTIONS = [
-  { value: 'ai_influencer', label: 'AI Influencer' }, { value: 'ugc', label: 'UGC' },
-  { value: 'ad', label: 'Ad' }, { value: 'tiktok_hook', label: 'TikTok Hook' },
-  { value: 'documentary', label: 'Documentary' },
+  { value: 'storytelling', label: 'Storytelling' }, { value: 'educational', label: 'Educational' },
+  { value: 'documentary', label: 'Documentary' }, { value: 'punchy', label: 'Punchy Hook' },
+  { value: 'conversational', label: 'Conversational' },
 ];
 const TONE_OPTIONS = [
   { value: 'friendly', label: 'Friendly' }, { value: 'professional', label: 'Professional' },
@@ -316,7 +314,7 @@ function CreateWizard() {
   const [aiProduct, setAiProduct] = useState('');
   const [aiAudience, setAiAudience] = useState('');
   const [aiGoal, setAiGoal] = useState('engagement');
-  const [aiStyle, setAiStyle] = useState('ai_influencer');
+  const [aiStyle, setAiStyle] = useState('storytelling');
   const [aiTone, setAiTone] = useState('friendly');
   const [aiSeconds, setAiSeconds] = useState(30);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
@@ -339,7 +337,7 @@ function CreateWizard() {
   const [durationSeconds, setDurationSeconds] = useState(60);
   const [style, setStyle] = useState(() => {
     const s = searchParams.get('style');
-    return STYLE_OPTIONS.some((o) => o.value === s) ? s! : 'cinematic';
+    return STYLE_OPTIONS.some((o) => o.value === s) ? s! : 'cartoon';
   });
   const [niche, setNiche] = useState('');
   const [niches, setNiches] = useState<string[]>([]);

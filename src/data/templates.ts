@@ -39,31 +39,31 @@ export const TEMPLATES: Template[] = [
   {
     id: 'bible-short', name: 'Bible Storytelling Short', tag: 'Shorts',
     description: 'Vertical cinematic scenes for faceless Bible storytelling.',
-    config: { render_mode: 'mode_1', format: '9:16', style: 'cinematic', niche: 'Bible storytelling', subtitle: sub() },
+    config: { render_mode: 'mode_1', format: '9:16', style: 'ghibli', niche: 'Bible storytelling', subtitle: sub() },
   },
   {
     id: 'finance-explainer', name: 'Finance Explainer', tag: 'YouTube',
     description: 'Wide, clean illustrated look for finance narratives.',
-    config: { render_mode: 'mode_1', format: '16:9', style: 'digital-art', niche: 'Finance storytelling', subtitle: sub() },
+    config: { render_mode: 'mode_1', format: '16:9', style: 'cartoon', niche: 'Finance storytelling', subtitle: sub() },
   },
   {
     id: 'motivational-reel', name: 'Motivational Reel', tag: 'Shorts',
     description: 'Punchy vertical quote shorts with enhanced motion.',
-    config: { render_mode: 'mode_2', format: '9:16', style: 'cinematic', niche: 'Motivational & Quote Shorts', subtitle: sub({ font_color: '#FBBF24', placement: 'center' }) },
+    config: { render_mode: 'mode_2', format: '9:16', style: 'cartoon', niche: 'Motivational & Quote Shorts', subtitle: sub({ font_color: '#FBBF24', placement: 'center' }) },
   },
   {
     id: 'history-doc', name: 'History Documentary', tag: 'YouTube',
     description: 'Realistic, documentary-style history videos.',
-    config: { render_mode: 'mode_1', format: '16:9', style: 'photographic', niche: 'History', subtitle: sub() },
+    config: { render_mode: 'mode_1', format: '16:9', style: 'ghibli', niche: 'History', subtitle: sub() },
   },
   {
     id: 'dark-truths', name: 'Dark Truths Short', tag: 'Shorts',
     description: 'Moody vertical scenes for dark-reality storytelling.',
-    config: { render_mode: 'mode_1', format: '9:16', style: 'cinematic', niche: 'Dark Truths / Reality', subtitle: sub() },
+    config: { render_mode: 'mode_1', format: '9:16', style: 'cartoon', niche: 'Dark Truths / Reality', subtitle: sub() },
   },
   {
     id: 'self-improvement', name: 'Self-Improvement Short', tag: 'Shorts',
     description: 'Discipline & growth shorts with semi-animated scenes.',
-    config: { render_mode: 'mode_2', format: '9:16', style: 'cinematic', niche: 'Self-Improvement & Discipline', subtitle: sub() },
+    config: { render_mode: 'mode_2', format: '9:16', style: 'cartoon', niche: 'Self-Improvement & Discipline', subtitle: sub() },
   },
 ];

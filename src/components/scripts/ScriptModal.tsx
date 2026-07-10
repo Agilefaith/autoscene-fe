@@ -31,7 +31,7 @@ export function ScriptModal({ initial, onClose, onCreated, onUpdated }: ScriptMo
   const [audience, setAudience]       = useState(initial?.target_audience ?? '');
   const [tone, setTone]               = useState(initial?.tone ?? '');
   const [goal, setGoal]               = useState(initial?.goal ?? 'sales');
-  const [style, setStyle]             = useState(initial?.style ?? 'ugc');
+  const [style, setStyle]             = useState(initial?.style ?? 'storytelling');
   const [generating, setGenerating]   = useState(false);
   const [preview, setPreview]         = useState<GeneratePreview | null>(null);
 
