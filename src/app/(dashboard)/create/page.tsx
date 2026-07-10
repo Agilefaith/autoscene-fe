@@ -1264,13 +1264,18 @@ function SubtitlePreview({ subtitle, format }: { subtitle: SubtitleSettingsState
   const portrait = format === '9:16';
   const alignClass = subtitle.placement === 'top' ? 'items-start pt-6'
     : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-6';
+  // Matches the real render's framing (see Preview()): portrait is height-driven,
+  // landscape is width-driven, so the on-screen shape matches the actual export.
+  const frameStyle: React.CSSProperties = portrait
+    ? { height: 260, aspectRatio: '9 / 16' }
+    : { width: '100%', maxWidth: 462, aspectRatio: '16 / 9' };
 
   return (
     <div>
       <label className="block text-xs font-semibold text-text-secondary mb-1.5">Preview</label>
       <div
-        className={cn('relative w-full rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-6', alignClass)}
-        style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9', maxHeight: 260 }}
+        className={cn('relative mx-auto rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-6', alignClass)}
+        style={frameStyle}
       >
         <span
           className="text-center max-w-full break-words"
