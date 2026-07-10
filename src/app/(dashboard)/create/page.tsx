@@ -195,9 +195,9 @@ function stagesToDisplay(status: string, durations: Record<number, number>): Pip
 }
 
 // Light-theme portal select
-function CustomSelect({ value, onChange, options, placeholder = 'Select…' }: {
+function CustomSelect({ value, onChange, options, placeholder = 'Select…', disabled = false }: {
   value: string; onChange: (v: string) => void;
-  options: { value: string; label: string }[]; placeholder?: string;
+  options: { value: string; label: string }[]; placeholder?: string; disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ left: number; width: number; top?: number; bottom?: number } | null>(null);
@@ -206,6 +206,7 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select…' }: {
   const selected = options.find((o) => o.value === value);
 
   const toggle = () => {
+    if (disabled) return;
     if (!open && buttonRef.current) {
       const r = buttonRef.current.getBoundingClientRect();
       // Flip up when there isn't enough room below (dropdown max-height 220px).
@@ -236,10 +237,10 @@ function CustomSelect({ value, onChange, options, placeholder = 'Select…' }: {
   return (
     <div className="relative">
       <button
-        ref={buttonRef} type="button" onClick={toggle}
+        ref={buttonRef} type="button" onClick={toggle} disabled={disabled}
         className={cn(
           'w-full flex items-center justify-between pl-3 pr-2.5 py-2.5 rounded-xl border text-sm transition-colors text-left bg-white',
-          open ? 'border-primary' : 'border-border-strong hover:border-primary/40'
+          disabled ? 'opacity-60 cursor-not-allowed border-border-strong' : open ? 'border-primary' : 'border-border-strong hover:border-primary/40'
         )}
       >
         <span className={selected ? 'text-text' : 'text-text-muted'}>{selected?.label ?? placeholder}</span>
@@ -879,33 +880,6 @@ function CreateWizard() {
                     </div>
                   )}
 
-                  {/* Reference image — best-effort character consistency across scenes */}
-                  <div className="glass rounded-2xl p-5">
-                    <div className="flex items-start gap-4">
-                      <label className={cn('shrink-0 w-20 h-20 rounded-xl border border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer bg-surface-muted hover:border-primary/40 transition-colors', refUploading && 'opacity-60 pointer-events-none')}>
-                        {referenceImageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={referenceImageUrl} alt="Reference" className="w-full h-full object-cover" />
-                        ) : refUploading ? (
-                          <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
-                        ) : (
-                          <ImageIcon className="w-5 h-5 text-text-muted" />
-                        )}
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadReference(f); e.target.value = ''; }} />
-                      </label>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-text">Reference image <span className="text-text-muted font-normal">(optional)</span></p>
-                        <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                          Upload a character or subject to keep consistent across scenes. On the current engine this is best-effort (same look and description, not an identical face every scene).
-                        </p>
-                        {referenceImageUrl && (
-                          <button onClick={() => setReferenceImageUrl(null)} className="mt-2 text-xs font-medium text-[#EF4444] hover:underline">Remove</button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
                   {savedScripts.length > 0 && (
                     <div>
                       <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Or reuse a saved script</label>
@@ -1068,7 +1042,34 @@ function CreateWizard() {
                         </Field>
                         <Field label="Video Style"><CustomSelect value={style} onChange={setStyle} options={STYLE_OPTIONS} /></Field>
                       </div>
-                      <Field label="Niche"><CustomSelect value={niche} onChange={setNiche} options={niches.map((n) => ({ value: n, label: n }))} placeholder="Pick a niche" /></Field>
+                      <Field label="Niche"><CustomSelect value={niche} onChange={setNiche} options={niches.map((n) => ({ value: n, label: n }))} placeholder="Pick a niche" disabled /></Field>
+
+                      {/* Reference image — best-effort character consistency across scenes */}
+                      <div>
+                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">Reference image <span className="text-text-muted font-normal">(optional)</span></label>
+                        <div className="flex items-start gap-4">
+                          <label className={cn('shrink-0 w-16 h-16 rounded-xl border border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer bg-surface-muted hover:border-primary/40 transition-colors', refUploading && 'opacity-60 pointer-events-none')}>
+                            {referenceImageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={referenceImageUrl} alt="Reference" className="w-full h-full object-cover" />
+                            ) : refUploading ? (
+                              <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
+                            ) : (
+                              <ImageIcon className="w-5 h-5 text-text-muted" />
+                            )}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadReference(f); e.target.value = ''; }} />
+                          </label>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-text-muted leading-relaxed">
+                              Upload a character or subject to keep consistent across scenes. On the current engine this is best-effort (same look and description, not an identical face every scene).
+                            </p>
+                            {referenceImageUrl && (
+                              <button onClick={() => setReferenceImageUrl(null)} className="mt-2 text-xs font-medium text-[#EF4444] hover:underline">Remove</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Voiceover */}
