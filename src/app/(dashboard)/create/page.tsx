@@ -144,6 +144,12 @@ const SUBTITLE_SIZES = [
   { value: 16, label: 'S' }, { value: 20, label: 'M' }, { value: 24, label: 'L' }, { value: 32, label: 'XL' },
 ];
 
+// Mirrors ffmpeg_subs.py's font_style → FontName mapping so the preview matches the burned-in look.
+const SUBTITLE_FONT_FAMILY: Record<SubtitleStyleOption, string> = {
+  serif: 'Georgia, serif', mono: '"Courier New", monospace',
+  sans: 'Arial, sans-serif', bold: 'Arial, sans-serif', italic: 'Arial, sans-serif',
+};
+
 const EVENT_STAGE_TO_IDX: Record<string, number> = {
   breakdown: 0, images: 1, voiceover: 2, render: 3, assembly: 4,
 };
@@ -1135,6 +1141,7 @@ function CreateWizard() {
                         <Field label="Position"><CustomSelect value={subtitle.placement} onChange={(v) => setSubtitle((s) => ({ ...s, placement: v as SubtitlePlacement }))} options={[{ value: 'top', label: 'Top' }, { value: 'center', label: 'Center' }, { value: 'bottom', label: 'Bottom' }]} /></Field>
                       </div>
                     )}
+                    {subtitle.enabled && <SubtitlePreview subtitle={subtitle} format={format} />}
                   </div>
                 </div>
               )}
@@ -1249,6 +1256,36 @@ function WaveBars() {
           transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.07, ease: 'easeInOut' }}
         />
       ))}
+    </div>
+  );
+}
+
+function SubtitlePreview({ subtitle, format }: { subtitle: SubtitleSettingsState; format: Format }) {
+  const portrait = format === '9:16';
+  const alignClass = subtitle.placement === 'top' ? 'items-start pt-6'
+    : subtitle.placement === 'center' ? 'items-center' : 'items-end pb-6';
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-text-secondary mb-1.5">Preview</label>
+      <div
+        className={cn('relative w-full rounded-xl overflow-hidden bg-[#0F0A1C] flex justify-center px-6', alignClass)}
+        style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9', maxHeight: 260 }}
+      >
+        <span
+          className="text-center max-w-full break-words"
+          style={{
+            color: subtitle.font_color,
+            fontFamily: SUBTITLE_FONT_FAMILY[subtitle.font_style],
+            fontSize: subtitle.font_size,
+            fontWeight: subtitle.font_style === 'bold' ? 700 : 400,
+            fontStyle: subtitle.font_style === 'italic' ? 'italic' : 'normal',
+            textShadow: '0 0 2px #000, 0 0 2px #000, 1px 1px 1px #000, -1px -1px 1px #000, 2px 2px 3px rgba(0,0,0,0.8)',
+          }}
+        >
+          Like this, your subtitles will appear
+        </span>
+      </div>
     </div>
   );
 }
