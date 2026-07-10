@@ -467,6 +467,7 @@ function CreateWizard() {
           title: aiTitle.trim() || 'Untitled Script', content, mode: scriptMode,
           product_name: aiProduct.trim() || null, tone: aiTone,
           target_audience: aiAudience.trim() || null, goal: aiGoal, style: aiStyle,
+          niche: niche || null, duration_seconds: durationSeconds,
         }),
       });
       setScriptId(s.id);
@@ -899,6 +900,8 @@ function CreateWizard() {
                             if (s.generation_mode === 'custom') setCustomScript(s.content); else setGenerated(s.content);
                             setAiTitle(s.title); setAiProduct(s.product_name ?? ''); setAiAudience(s.target_audience ?? '');
                             if (s.goal) setAiGoal(s.goal); if (s.style) setAiStyle(s.style); if (s.tone) setAiTone(s.tone);
+                            if (s.niche) setNiche(s.niche);
+                            if (s.duration_seconds) setDurationSeconds(s.duration_seconds);
                           }}
                             className={cn('text-left p-4 rounded-xl border transition-colors', scriptId === s.id ? 'border-primary bg-primary-50' : 'border-border bg-white hover:border-primary/40')}>
                             <p className="text-sm font-medium text-text truncate">{s.title}</p>

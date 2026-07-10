@@ -12,6 +12,8 @@ export interface Script {
   target_audience?: string;
   goal?: string;
   style?: string;
+  niche?: string;
+  duration_seconds?: number;
   created_at: string;
 }
 
