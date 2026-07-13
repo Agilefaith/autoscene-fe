@@ -31,6 +31,7 @@ export interface Project {
   id: string;
   name: string;
   status: ProjectStatus | string;
+  voice_config_id?: string | null;
   render_mode: string;
   format: string;
   niche?: string | null;

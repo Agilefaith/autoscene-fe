@@ -51,6 +51,7 @@ interface Project {
   id: string;
   name?: string;
   status: string;
+  voice_config_id?: string | null;
   render_mode?: string;
   format?: string;
   niche?: string | null;
@@ -375,7 +376,11 @@ function CreateWizard() {
   useEffect(() => {
     authedJson<Script[]>('/api/scripts').then(setSavedScripts).catch(() => {});
     authedJson<string[]>('/api/projects/options/niches').then((n) => { setNiches(n); if (n[0] && !searchParams.get('template')) setNiche(n[0]); }).catch(() => {});
-    authedJson<PresetVoice[]>('/api/voices/preset').then(setPresetVoices).catch(() => {});
+    authedJson<PresetVoice[]>('/api/voices/preset').then((vs) => {
+      setPresetVoices(vs);
+      // Default to the first preset so a voice is always selected (user can change it).
+      if (vs[0]) setSelectedPreset((cur) => cur ?? vs[0]);
+    }).catch(() => {});
     authedJson<SavedVoice[]>('/api/voices').then(setSavedVoices).catch(() => {});
   }, []);
 
@@ -407,6 +412,7 @@ function CreateWizard() {
       if (p.niche) setNiche(p.niche);
       if (p.style) setStyle(p.style);
       if (p.reference_image_url) setReferenceImageUrl(p.reference_image_url);
+      if (p.voice_config_id) setSelectedSavedId(p.voice_config_id);
       if (p.subtitle_font) setSubtitle({
         enabled: p.subtitle_enabled ?? true,
         font_color: p.subtitle_color ?? '#FFFFFF',
@@ -717,6 +723,11 @@ function CreateWizard() {
   // ── Derived ──
   const scriptReady = scriptMode === 'custom' ? customScript.trim().length > 0 : generated.trim().length > 0;
   const voiceReady = voiceTab === 'preset' ? (!!selectedPreset || !!selectedSavedId) : customVoiceId.trim().length > 0;
+  const voiceLabel = voiceTab === 'custom'
+    ? (customVoiceId.trim() ? `Custom · ${customProvider}` : null)
+    : selectedSavedId
+      ? (savedVoices.find((v) => v.id === selectedSavedId)?.name ?? 'Saved voice')
+      : (selectedPreset?.name ?? null);
   const credits = creditCost(durationSeconds, renderMode);
   const pipelineStages = stagesToDisplay(projectStatus, durations);
   const isGenerating = step === 3 && projectStatus !== '' && !isTerminal(projectStatus);
@@ -803,11 +814,19 @@ function CreateWizard() {
                 <SummaryRow label="Format" value={format} />
                 <SummaryRow label="Length" value={LENGTH_OPTIONS.find((o) => o.seconds === durationSeconds)?.label ?? `${durationSeconds}s`} />
                 <SummaryRow label="Niche" value={niche || '—'} />
+                <SummaryRow label="Voice" value={voiceLabel ?? 'Not selected'} />
                 <SummaryRow label="Subtitles" value={subtitle.enabled ? 'On' : 'Off'} />
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <span className="text-sm text-text-muted flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Estimated cost</span>
                   <span className="text-sm font-semibold text-text">{credits} credits</span>
                 </div>
+                {!voiceReady && (
+                  <button onClick={() => setStep(1)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-warning/10 border border-warning/30 text-left text-xs text-text hover:border-warning/60 transition-colors">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
+                    <span>No voice selected — click here to pick one in Configure.</span>
+                  </button>
+                )}
               </div>
             )}
 
