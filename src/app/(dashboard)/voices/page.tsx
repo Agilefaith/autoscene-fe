@@ -26,6 +26,9 @@ export default function VoicesPage() {
 
   const [voiceId, setVoiceId]       = useState('');
   const [nickname, setNickname]     = useState('');
+  // User's own provider API key — required for private voices (a voice ID is
+  // only reachable with a key from the account that owns it). Stored encrypted.
+  const [apiKey, setApiKey]         = useState('');
   const [provider, setProvider]     = useState<'elevenlabs' | 'minimax'>('elevenlabs');
   const [formError, setFormError]   = useState('');
   const [validating, setValidating] = useState(false);
@@ -62,12 +65,20 @@ export default function VoicesPage() {
       const res = await authedFetch('/api/voices/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_id: voiceId.trim(), provider }),
+        body: JSON.stringify({ voice_id: voiceId.trim(), provider, api_key: apiKey.trim() || null }),
       });
       if (!res.ok) { setFormError('Validation failed. Check the voice ID.'); return; }
       const result: ValidateResult = await res.json();
       if (!result.valid) {
-        setFormError('Voice ID not found. Make sure it exists in ElevenLabs.');
+        if (result.reason === 'not_accessible') {
+          setFormError(apiKey.trim()
+            ? 'That voice isn’t reachable with this API key. Check that the key belongs to the account that owns the voice.'
+            : 'This looks like a private voice — it isn’t available with the platform key. Paste your own API key from the same account to use it.');
+        } else if (result.reason === 'invalid_key') {
+          setFormError('That API key was rejected by the provider. Double-check the key and try again.');
+        } else {
+          setFormError('Voice ID not found. Make sure it exists and is spelled correctly.');
+        }
         return;
       }
       setValidated(result);
@@ -93,6 +104,7 @@ export default function VoicesPage() {
           voice_id: validated.voice_id,
           is_custom: true,
           validated: true,
+          api_key: apiKey.trim() || null,
         }),
       });
       if (!res.ok) { setFormError('Failed to save voice.'); return; }
@@ -100,6 +112,7 @@ export default function VoicesPage() {
       setSavedVoices((prev) => [created, ...prev]);
       setVoiceId('');
       setNickname('');
+      setApiKey('');
       setValidated(null);
       setFormError('');
     } catch {
@@ -206,7 +219,7 @@ export default function VoicesPage() {
               {(['elevenlabs', 'minimax'] as const).map((p) => (
                 <button
                   key={p}
-                  onClick={() => { setProvider(p); setValidated(null); setFormError(''); }}
+                  onClick={() => { setProvider(p); setValidated(null); setFormError(''); setApiKey(''); }}
                   className={cn(
                     'px-3 h-7 rounded-lg text-[11px] font-semibold transition-all',
                     provider === p ? 'bg-[#7C3AED]/10 text-[#7C3AED]' : 'text-text-muted hover:text-text'
@@ -219,7 +232,9 @@ export default function VoicesPage() {
           </div>
 
           <p className="text-xs text-text-muted leading-relaxed -mt-1">
-            Paste your Voice ID below. You can find it in your voice provider account under your saved voices.
+            Paste your Voice ID below. Public voices work with just the ID; private voices (e.g. your own
+            cloned voice) also need your API key from the same account — it&apos;s stored encrypted and only
+            used to generate your videos.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -242,6 +257,19 @@ export default function VoicesPage() {
                 placeholder="e.g. My Brand Voice"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label className="text-xs font-medium text-text-secondary">
+                Your API key <span className="text-[#3F3F46]">(optional — required for private voices)</span>
+              </label>
+              <input
+                className={inputClass}
+                type="password"
+                autoComplete="off"
+                placeholder={`Your ${provider === 'minimax' ? 'Minimax' : 'ElevenLabs'} API key`}
+                value={apiKey}
+                onChange={(e) => { setApiKey(e.target.value); setValidated(null); setFormError(''); }}
               />
             </div>
           </div>

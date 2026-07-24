@@ -47,6 +47,14 @@ interface Scene {
   status: string;
 }
 
+/** One named cast member. `description` is the identity-lock sheet the backend
+ *  builds from the image — read-only here. */
+interface CharacterRef {
+  name: string;
+  image_url: string;
+  description?: string | null;
+}
+
 interface Project {
   id: string;
   name?: string;
@@ -57,6 +65,7 @@ interface Project {
   niche?: string | null;
   style?: string | null;
   reference_image_url?: string | null;
+  characters?: CharacterRef[] | null;
   duration_seconds?: number;
   subtitle_enabled?: boolean;
   subtitle_font?: string | null;
@@ -111,10 +120,10 @@ const LENGTH_OPTIONS: { seconds: number; label: string }[] = [
 ];
 
 const STYLE_OPTIONS = [
-  { value: 'stickman', label: 'Stickman' },
-  { value: 'cartoon', label: 'Cartoon' },
-  { value: 'ghibli', label: 'Ghibli' },
-  { value: 'family_guy', label: 'Family Guy Style' },
+  { value: 'stickman', label: 'Stickman (Modern Explainer Style)' },
+  { value: 'cartoon', label: 'Cartoon (Animated Movie Style)' },
+  { value: 'ghibli', label: 'Ghibli Anime (Soft Cinematic Style)' },
+  { value: 'cinematic', label: 'Cinematic' },
 ];
 
 const GOAL_OPTIONS = [
@@ -170,6 +179,19 @@ const FAILED_STAGE_IDX: Record<string, number> = {
 
 const creditCost = (seconds: number, mode: RenderMode) =>
   Math.ceil(seconds / 30) * (mode === 'mode_2' ? 2 : 1);
+
+/** Cast entries ready for the API: image required, names trimmed. `description`
+ *  (the backend's identity-lock sheet) is preserved so re-saving a project never
+ *  re-runs the vision call that built it. */
+const cleanCast = (cast: CharacterRef[]): CharacterRef[] =>
+  cast.filter((c) => c.image_url).map((c) => ({
+    name: c.name.trim(), image_url: c.image_url, description: c.description ?? null,
+  }));
+
+/** Identity of the cast for the breakdown cache key — changing a name or image
+ *  must re-run the scene breakdown, since prompts embed both. */
+const castKey = (cast: CharacterRef[]): string =>
+  cleanCast(cast).map((c) => `${c.name}|${c.image_url}`).join(',');
 
 const estimateScriptSeconds = (text: string): number => {
   const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
@@ -298,6 +320,9 @@ function CreateWizard() {
   const planCap = plan.maxSeconds;
   const lengthOptions = LENGTH_OPTIONS.filter((o) => o.seconds <= planCap);
 
+  // Upload one character reference and append it to the cast. The name is filled
+  // in by the user afterwards — it's what the scene engine uses to refer to this
+  // character by name in every scene prompt.
   const uploadReference = async (file: File) => {
     setRefUploading(true);
     try {
@@ -305,7 +330,7 @@ function CreateWizard() {
       fd.append('file', file);
       const res = await authedFetch('/api/uploads/reference', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) setReferenceImageUrl(data.url);
+      if (res.ok && data.url) setCharacters((prev) => [...prev, { name: '', image_url: data.url }]);
       else toast(data?.detail ?? 'Could not upload reference image');
     } catch { toast('Could not upload reference image'); }
     finally { setRefUploading(false); }
@@ -329,7 +354,8 @@ function CreateWizard() {
   const [aiStyle, setAiStyle] = useState('storytelling');
   const [aiTone, setAiTone] = useState('friendly');
   const [aiSeconds, setAiSeconds] = useState(30);
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
+  // Named cast for character identity lock: one reference image + name each.
+  const [characters, setCharacters] = useState<CharacterRef[]>([]);
   const [refUploading, setRefUploading] = useState(false);
   const [customScript, setCustomScript] = useState('');
   const [generated, setGenerated] = useState('');
@@ -360,6 +386,9 @@ function CreateWizard() {
   const [selectedSavedId, setSelectedSavedId] = useState('');
   const [customVoiceId, setCustomVoiceId] = useState('');
   const [customProvider, setCustomProvider] = useState<'elevenlabs' | 'minimax'>('elevenlabs');
+  // User's own provider API key — required for private voices (a voice ID is
+  // only reachable with a key from the account that owns it).
+  const [customApiKey, setCustomApiKey] = useState('');
   const [subtitle, setSubtitle] = useState<SubtitleSettingsState>({
     enabled: true, font_color: '#FFFFFF', font_style: 'bold', font_size: 24, placement: 'bottom',
   });
@@ -383,6 +412,17 @@ function CreateWizard() {
     }).catch(() => {});
     authedJson<SavedVoice[]>('/api/voices').then(setSavedVoices).catch(() => {});
   }, []);
+
+  // Safety net: if the preset list failed to load at mount (transient fetch
+  // error), retry when the user reaches the final step — otherwise no voice can
+  // be selected and Generate Video stays disabled with no way out.
+  useEffect(() => {
+    if (step !== 3 || presetVoices.length > 0) return;
+    authedJson<PresetVoice[]>('/api/voices/preset').then((vs) => {
+      setPresetVoices(vs);
+      if (vs[0]) setSelectedPreset((cur) => cur ?? vs[0]);
+    }).catch(() => {});
+  }, [step, presetVoices.length]);
 
   // Apply a starter template from ?template=
   useEffect(() => {
@@ -411,7 +451,9 @@ function CreateWizard() {
       if (p.duration_seconds) setDurationSeconds(p.duration_seconds);
       if (p.niche) setNiche(p.niche);
       if (p.style) setStyle(p.style);
-      if (p.reference_image_url) setReferenceImageUrl(p.reference_image_url);
+      // Legacy projects carry a single unnamed reference; show it as one cast member.
+      if (p.characters?.length) setCharacters(p.characters);
+      else if (p.reference_image_url) setCharacters([{ name: '', image_url: p.reference_image_url }]);
       if (p.voice_config_id) setSelectedSavedId(p.voice_config_id);
       if (p.subtitle_font) setSubtitle({
         enabled: p.subtitle_enabled ?? true,
@@ -420,7 +462,7 @@ function CreateWizard() {
         font_size: p.subtitle_size ?? 24,
         placement: (p.subtitle_position as SubtitlePlacement) ?? 'bottom',
       });
-      breakdownKeyRef.current = `${p.render_mode}:${p.format}:${p.style ?? ''}:${p.niche ?? ''}:${p.duration_seconds}:${p.reference_image_url ?? ''}`;
+      breakdownKeyRef.current = `${p.render_mode}:${p.format}:${p.style ?? ''}:${p.niche ?? ''}:${p.duration_seconds}:${castKey(p.characters ?? [])}`;
 
       if (p.status === 'scenes_ready') {
         setBreakdownStatus('ready'); setStep(2); // Scenes step
@@ -532,7 +574,7 @@ function CreateWizard() {
         name: aiTitle.trim() || 'Untitled Project', script_id: sid,
         render_mode: renderMode, format, niche, style,
         duration_seconds: durationSeconds, subtitle_settings: subtitle,
-        reference_image_url: referenceImageUrl,
+        characters: cleanCast(characters),
       };
       let pid = projectId;
       if (!pid) {
@@ -547,7 +589,7 @@ function CreateWizard() {
       }
       setStep(2);
       // Re-run breakdown if not done or the config changed since the last one.
-      const key = `${renderMode}:${format}:${style}:${niche}:${durationSeconds}:${referenceImageUrl ?? ''}`;
+      const key = `${renderMode}:${format}:${style}:${niche}:${durationSeconds}:${castKey(characters)}`;
       if (breakdownStatus !== 'ready' || breakdownKeyRef.current !== key) runBreakdown(pid);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
@@ -603,16 +645,28 @@ function CreateWizard() {
     }
     // custom
     if (!customVoiceId.trim()) { setError('Enter a custom voice ID.'); return null; }
-    const val = await authedJson<{ valid: boolean; name: string | null }>('/api/voices/validate', {
+    const apiKey = customApiKey.trim() || null;
+    const val = await authedJson<{ valid: boolean; name: string | null; reason?: string | null }>('/api/voices/validate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice_id: customVoiceId.trim(), provider: customProvider }),
+      body: JSON.stringify({ voice_id: customVoiceId.trim(), provider: customProvider, api_key: apiKey }),
     });
-    if (!val.valid) { setError('That voice ID is not valid.'); return null; }
+    if (!val.valid) {
+      if (val.reason === 'not_accessible') {
+        setError(apiKey
+          ? 'That voice isn’t reachable with this API key. Check that the key belongs to the account that owns the voice.'
+          : 'This voice isn’t available with the platform key — it’s likely a private voice. Paste your own API key from the same account to use it.');
+      } else if (val.reason === 'invalid_key') {
+        setError('That API key was rejected by the provider. Double-check the key and try again.');
+      } else {
+        setError('That voice ID is not valid.');
+      }
+      return null;
+    }
     const v = await authedJson<SavedVoice>('/api/voices', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: val.name ?? `Custom (${customProvider})`, provider: customProvider,
-        voice_id: customVoiceId.trim(), is_custom: true, validated: true,
+        voice_id: customVoiceId.trim(), is_custom: true, validated: true, api_key: apiKey,
       }),
     });
     setSavedVoices((prev) => [v, ...prev]);
@@ -688,7 +742,7 @@ function CreateWizard() {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           render_mode: renderMode, format, niche, style,
-          reference_image_url: referenceImageUrl,
+          characters: cleanCast(characters),
           duration_seconds: durationSeconds, voice_config_id: voiceConfigId,
           subtitle_settings: subtitle,
         }),
@@ -1092,31 +1146,60 @@ function CreateWizard() {
                       </div>
                       <Field label="Niche"><CustomSelect value={niche} onChange={setNiche} options={niches.map((n) => ({ value: n, label: n }))} placeholder="Pick a niche" disabled /></Field>
 
-                      {/* Reference image — best-effort character consistency across scenes */}
+                      {/* Cast — one reference image per character, each with the name the
+                          script uses, so scene prompts can lock their identity by name. */}
                       <div>
-                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">Reference image <span className="text-text-muted font-normal">(optional)</span></label>
-                        <div className="flex items-start gap-4">
-                          <label className={cn('shrink-0 w-16 h-16 rounded-xl border border-dashed border-border flex items-center justify-center overflow-hidden cursor-pointer bg-surface-muted hover:border-primary/40 transition-colors', refUploading && 'opacity-60 pointer-events-none')}>
-                            {referenceImageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={referenceImageUrl} alt="Reference" className="w-full h-full object-cover" />
-                            ) : refUploading ? (
-                              <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
-                            ) : (
-                              <ImageIcon className="w-5 h-5 text-text-muted" />
-                            )}
-                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadReference(f); e.target.value = ''; }} />
-                          </label>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-text-muted leading-relaxed">
-                              Upload a character or subject to keep consistent across scenes. On the current engine this is best-effort (same look and description, not an identical face every scene).
-                            </p>
-                            {referenceImageUrl && (
-                              <button onClick={() => setReferenceImageUrl(null)} className="mt-2 text-xs font-medium text-[#EF4444] hover:underline">Remove</button>
-                            )}
+                        <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                          Characters <span className="text-text-muted font-normal">(optional)</span>
+                        </label>
+                        <p className="text-xs text-text-muted leading-relaxed mb-3">
+                          Upload one reference image per character and name them exactly as your script does
+                          (e.g. <span className="text-text-secondary font-medium">Leah</span>). Every scene that mentions
+                          a character reuses their locked look, so they stay recognizable across the whole video.
+                        </p>
+
+                        {characters.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                            {characters.map((c, i) => (
+                              <div key={`${c.image_url}-${i}`} className="rounded-xl border border-border bg-surface-muted p-2 space-y-2">
+                                <div className="relative aspect-square rounded-lg overflow-hidden bg-surface">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={c.image_url} alt={c.name || 'Character reference'} className="w-full h-full object-cover" />
+                                  <button
+                                    onClick={() => setCharacters((prev) => prev.filter((_, j) => j !== i))}
+                                    title="Remove character"
+                                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#1C1530]/70 text-white backdrop-blur flex items-center justify-center hover:bg-[#EF4444] transition-colors"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                                <input
+                                  className={cn(inputClass, 'py-1.5 text-xs', !c.name.trim() && 'border-[#F59E0B]/60')}
+                                  value={c.name}
+                                  placeholder="Character name"
+                                  onChange={(e) => {
+                                    const name = e.target.value;
+                                    setCharacters((prev) => prev.map((x, j) => j === i ? { ...x, name } : x));
+                                  }}
+                                />
+                              </div>
+                            ))}
                           </div>
-                        </div>
+                        )}
+
+                        <label className={cn('inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-border text-xs font-medium text-text-secondary cursor-pointer bg-surface-muted hover:border-primary/40 transition-colors', refUploading && 'opacity-60 pointer-events-none')}>
+                          {refUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                          {refUploading ? 'Uploading…' : characters.length ? 'Add another character' : 'Add character reference'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadReference(f); e.target.value = ''; }} />
+                        </label>
+
+                        {characters.some((c) => !c.name.trim()) && (
+                          <p className="text-xs text-[#B45309] mt-2">
+                            Name every character — an unnamed reference still guides the art style, but it can&apos;t be
+                            locked to a name in the script.
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1148,7 +1231,14 @@ function CreateWizard() {
                         <div className="space-y-3">
                           <Field label="Provider"><CustomSelect value={customProvider} onChange={(v) => setCustomProvider(v as 'elevenlabs' | 'minimax')} options={[{ value: 'elevenlabs', label: 'ElevenLabs' }, { value: 'minimax', label: 'Minimax' }]} /></Field>
                           <Field label="Voice ID"><input className={inputClass} value={customVoiceId} onChange={(e) => setCustomVoiceId(e.target.value)} placeholder="Paste a voice ID" /></Field>
-                          <p className="text-xs text-text-muted">We validate the ID before generating.</p>
+                          <Field label="Your API key (optional)">
+                            <input className={inputClass} type="password" value={customApiKey} onChange={(e) => setCustomApiKey(e.target.value)} placeholder={`Your ${customProvider === 'minimax' ? 'Minimax' : 'ElevenLabs'} API key`} autoComplete="off" />
+                          </Field>
+                          <p className="text-xs text-text-muted">
+                            Public voices work with just the ID. Private voices (e.g. your own cloned voice) also
+                            need your API key from the same account — it&apos;s stored encrypted and only used to
+                            generate your videos.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1228,10 +1318,19 @@ function CreateWizard() {
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {step === 3 ? (
-            <button onClick={handleGenerate} disabled={busy || !voiceReady}
-              className="btn-cta inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Generate Video
-            </button>
+            <div className="flex items-center gap-3">
+              {!voiceReady && !busy && (
+                <p className="text-xs text-text-muted max-w-[260px] text-right">
+                  {voiceTab === 'custom'
+                    ? 'Paste a custom voice ID (or switch to a preset voice) in Configure to enable Generate.'
+                    : 'Pick a voice in Configure to enable Generate.'}
+                </p>
+              )}
+              <button onClick={handleGenerate} disabled={busy || !voiceReady}
+                className="btn-cta inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Generate Video
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => { if (step === 0) handleScriptNext(); else if (step === 1) handleConfigureNext(); else setStep(3); }}

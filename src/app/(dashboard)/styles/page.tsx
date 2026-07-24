@@ -9,10 +9,10 @@ import { containerVariants, itemVariants } from '@/lib/animations';
 const SAMPLE_BASE = 'https://s3.us-west-004.backblazeb2.com/ai-influencer-app/style-samples';
 
 const STYLES = [
-  { value: 'stickman', label: 'Stickman', desc: 'Minimalist black stick-figure line drawings on white.' },
-  { value: 'cartoon', label: 'Cartoon', desc: 'Bold flat cartoon with thick outlines and vibrant colors.' },
-  { value: 'ghibli', label: 'Ghibli', desc: 'Studio Ghibli look: soft hand-painted, warm and whimsical.' },
-  { value: 'family_guy', label: 'Family Guy Style', desc: 'Flat adult-cartoon TV look with bold outlines.' },
+  { value: 'stickman', label: 'Stickman (Modern Explainer Style)', desc: 'Clean minimalist stick-figure look from modern explainer videos.' },
+  { value: 'cartoon', label: 'Cartoon (Animated Movie Style)', desc: 'High-quality animated-movie look with soft shading and cinematic lighting.' },
+  { value: 'ghibli', label: 'Ghibli Anime (Soft Cinematic Style)', desc: 'Soft painterly hand-drawn anime — warm, nostalgic, and immersive.' },
+  { value: 'cinematic', label: 'Cinematic', desc: 'Realistic film-still look with dramatic lighting and cinematic color grading.' },
 ];
 
 export default function StylesPage() {
@@ -35,6 +35,7 @@ export default function StylesPage() {
                 src={`${SAMPLE_BASE}/${s.value}.png`}
                 alt={s.label}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
               />
               <span className="absolute bottom-2 left-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#1C1530]/70 text-white backdrop-blur">
                 {s.label}
