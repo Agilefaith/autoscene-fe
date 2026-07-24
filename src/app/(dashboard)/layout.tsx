@@ -59,8 +59,8 @@ const DUMMY_NOTIFICATIONS: Notification[] = [
   },
   {
     id: '3', type: 'warning', read: true,
-    title: 'Credits running low',
-    body: 'You have 6 credits remaining (≈ 3 mins of video). Top up to keep generating.',
+    title: 'Running low on videos',
+    body: 'You have 2 videos left in your plan this month. Upgrade to keep generating.',
     time: '1h ago',
   },
 ];
@@ -213,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Zap className="w-3.5 h-3.5 text-primary" />
               <span className="text-xs font-semibold text-text">{credits?.balance ?? 0}</span>
-              <span className="text-xs text-text-muted">credits</span>
+              <span className="text-xs text-text-muted">{(credits?.balance ?? 0) === 1 ? 'video left' : 'videos left'}</span>
             </Link>
 
             {/* ── Notification bell ── */}

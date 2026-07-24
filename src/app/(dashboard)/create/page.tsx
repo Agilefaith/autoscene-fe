@@ -82,8 +82,10 @@ interface Project {
 
 const STEPS = ['Script', 'Configure', 'Scenes', 'Generate'];
 
+// Mode 3 (Real Animation) was removed entirely per Faith's 2026-06-27 request —
+// v1 ships Mode 1 and Mode 2 only.
 const RENDER_MODES: {
-  value: RenderMode | 'mode_3'; label: string; tag: string; desc: string;
+  value: RenderMode; label: string; tag: string; desc: string;
   bullets: string[]; disabled?: boolean;
 }[] = [
   {
@@ -95,11 +97,6 @@ const RENDER_MODES: {
     value: 'mode_2', label: 'Enhanced Motion', tag: 'Balanced',
     desc: '3 images per scene with smooth transitions.',
     bullets: ['Crossfade Transitions', 'Zoom / Pan per image', 'Progressive Prompts'],
-  },
-  {
-    value: 'mode_3', label: 'Real Animation', tag: 'Coming Soon',
-    desc: 'Real animated video with character movement.',
-    bullets: ['Real Motion', 'Expressions', 'Premium Quality'], disabled: true,
   },
 ];
 
@@ -180,9 +177,9 @@ const FAILED_STAGE_IDX: Record<string, number> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const creditCost = (seconds: number, mode: RenderMode) =>
-  Math.ceil(seconds / 30) * (mode === 'mode_2' ? 2 : 1);
+// Billing is a per-video monthly quota (see backend PLANS): every render costs
+// exactly 1 video regardless of length or mode. Mode 2's higher cost is priced
+// into the Mode 2 plans, not charged per render.
 
 /** Cast entries ready for the API: image required, names trimmed. `description`
  *  (the backend's identity-lock sheet) is preserved so re-saving a project never
@@ -786,7 +783,6 @@ function CreateWizard() {
     : selectedSavedId
       ? (savedVoices.find((v) => v.id === selectedSavedId)?.name ?? 'Saved voice')
       : (selectedPreset?.name ?? null);
-  const credits = creditCost(durationSeconds, renderMode);
   const pipelineStages = stagesToDisplay(projectStatus, durations);
   const isGenerating = step === 3 && projectStatus !== '' && !isTerminal(projectStatus);
   const isDone = projectStatus === 'completed';
@@ -875,8 +871,8 @@ function CreateWizard() {
                 <SummaryRow label="Voice" value={voiceLabel ?? 'Not selected'} />
                 <SummaryRow label="Subtitles" value={subtitle.enabled ? 'On' : 'Off'} />
                 <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <span className="text-sm text-text-muted flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Estimated cost</span>
-                  <span className="text-sm font-semibold text-text">{credits} credits</span>
+                  <span className="text-sm text-text-muted flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Cost</span>
+                  <span className="text-sm font-semibold text-text">1 video</span>
                 </div>
                 {!voiceReady && (
                   <button onClick={() => setStep(1)}
