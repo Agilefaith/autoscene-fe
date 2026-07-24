@@ -12,7 +12,3 @@ export function formatCredits(credits: number): string {
   return `${(minutes / 60).toFixed(1)}h`
 }
 
-export function calcCredits(durationSeconds: number, avatarTier: 'iii' | 'iv'): number {
-  const multiplier = avatarTier === 'iv' ? 4 : 1
-  return Math.ceil((durationSeconds / 30) * multiplier)
-}

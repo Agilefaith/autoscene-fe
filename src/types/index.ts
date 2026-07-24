@@ -40,14 +40,6 @@ export interface StatCard {
   trend?: 'up' | 'down' | 'neutral';
 }
 
-export interface PricingPlan {
-  name: string;
-  price: number;
-  highlighted?: boolean;
-  features: string[];
-  creditPacks: Array<{ price: number; credits: number; videoMinutes: number }>;
-  cta: string;
-}
 
 export interface NavItem {
   label: string;

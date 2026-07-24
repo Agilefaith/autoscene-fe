@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { HERO_AVATARS } from '@/data/hero';
+import { HERO_ACCENTS } from '@/data/hero';
 import { HERO_THUMBS, HERO_MAIN_SCENE } from '@/data/heroPanel';
 
 const container: Variants = {
@@ -84,7 +84,7 @@ export default function HeroSection() {
 
           <motion.div variants={item} className="flex items-center gap-4 pt-2">
             <div className="flex -space-x-2">
-              {HERO_AVATARS.map((color, i) => (
+              {HERO_ACCENTS.map((color, i) => (
                 <div
                   key={i}
                   className="w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
