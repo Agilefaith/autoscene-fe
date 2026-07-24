@@ -32,7 +32,7 @@ export const templateCover = (t: Template) => `${COVER_BASE}/${t.id}.png`;
 
 const sub = (over: Partial<Template['config']['subtitle']> = {}) => ({
   enabled: true, font_color: '#FFFFFF', font_style: 'bold' as SubtitleStyleOption,
-  font_size: 24, placement: 'bottom' as SubtitlePlacement, ...over,
+  font_size: 84, placement: 'bottom' as SubtitlePlacement, ...over,
 });
 
 export const TEMPLATES: Template[] = [

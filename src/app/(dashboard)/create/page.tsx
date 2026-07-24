@@ -153,8 +153,12 @@ const SUBTITLE_STYLES: { value: SubtitleStyleOption; label: string }[] = [
   { value: 'bold', label: 'Bold' }, { value: 'sans', label: 'Sans' },
   { value: 'serif', label: 'Serif' }, { value: 'italic', label: 'Italic' }, { value: 'mono', label: 'Mono' },
 ];
+// Font size is authored against the real canvas height (9:16 = 1920px, see
+// SubtitlePreview). The old 16/20/24/32 scale rendered at ~1–1.7% of frame
+// height — far too small even at XL. These map to ~2.5/3.3/4.4/5.8% for
+// short-form (9:16), matching how burned captions actually read on mobile.
 const SUBTITLE_SIZES = [
-  { value: 16, label: 'S' }, { value: 20, label: 'M' }, { value: 24, label: 'L' }, { value: 32, label: 'XL' },
+  { value: 48, label: 'S' }, { value: 64, label: 'M' }, { value: 84, label: 'L' }, { value: 112, label: 'XL' },
 ];
 
 // Mirrors ffmpeg_subs.py's font_style → FontName mapping so the preview matches the burned-in look.
@@ -390,7 +394,7 @@ function CreateWizard() {
   // only reachable with a key from the account that owns it).
   const [customApiKey, setCustomApiKey] = useState('');
   const [subtitle, setSubtitle] = useState<SubtitleSettingsState>({
-    enabled: true, font_color: '#FFFFFF', font_style: 'bold', font_size: 24, placement: 'bottom',
+    enabled: true, font_color: '#FFFFFF', font_style: 'bold', font_size: 84, placement: 'bottom',
   });
 
   // Step 4 — Generate
@@ -459,7 +463,7 @@ function CreateWizard() {
         enabled: p.subtitle_enabled ?? true,
         font_color: p.subtitle_color ?? '#FFFFFF',
         font_style: (p.subtitle_font as SubtitleStyleOption) ?? 'bold',
-        font_size: p.subtitle_size ?? 24,
+        font_size: p.subtitle_size ?? 84,
         placement: (p.subtitle_position as SubtitlePlacement) ?? 'bottom',
       });
       breakdownKeyRef.current = `${p.render_mode}:${p.format}:${p.style ?? ''}:${p.niche ?? ''}:${p.duration_seconds}:${castKey(p.characters ?? [])}`;
