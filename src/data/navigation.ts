@@ -4,8 +4,10 @@ export interface NavLink {
   dropdown?: boolean;
 }
 
+// Root-anchored hashes so the links also work from /features (a bare "#…"
+// would silently do nothing outside the landing page).
 export const navLinks: NavLink[] = [
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Features', href: '#niches' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'Features', href: '/features' },
+  { label: 'Pricing', href: '/#pricing' },
 ];
