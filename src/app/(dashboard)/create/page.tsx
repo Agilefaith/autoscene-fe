@@ -91,7 +91,7 @@ const RENDER_MODES: {
   {
     value: 'mode_1', label: 'Cinematic Motion', tag: 'Fast & Cheap',
     desc: '1 image per scene with cinematic camera effects.',
-    bullets: ['Zoom / Pan', 'Micro Motion', 'Parallax'],
+    bullets: ['15 Camera Moves', 'Micro Motion', 'Emotion-based Transitions'],
   },
   {
     value: 'mode_2', label: 'Enhanced Motion', tag: 'Balanced',
