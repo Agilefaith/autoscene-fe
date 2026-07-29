@@ -536,7 +536,14 @@ function CreateWizard() {
     const poll = async () => {
       try {
         const p = await authedJson<Project>(`/api/projects/${pid}`);
-        if (p.status === 'scenes_ready') { setScenes(p.scenes ?? []); setBreakdownStatus('ready'); return; }
+        if (p.status === 'scenes_ready') {
+          setScenes(p.scenes ?? []);
+          // Breakdown is where character sheets get built — pull them back so the
+          // cast cards can show which characters are fully locked.
+          if (p.characters?.length) setCharacters(p.characters);
+          setBreakdownStatus('ready');
+          return;
+        }
         if (p.status.startsWith('failed')) { setBreakdownStatus('failed'); setError(p.error_message ?? 'Scene breakdown failed.'); return; }
       } catch { /* keep polling */ }
       if (Date.now() - started < 120_000) setTimeout(poll, 2500);
@@ -1182,6 +1189,13 @@ function CreateWizard() {
                                     setCharacters((prev) => prev.map((x, j) => j === i ? { ...x, name } : x));
                                   }}
                                 />
+                                {/* After breakdown the backend fills in each character's locked
+                                    description; show whether this one got the full feature lock. */}
+                                {breakdownStatus === 'ready' && c.name.trim() && (
+                                  c.description
+                                    ? <p className="text-[10px] text-[#15803D] flex items-center gap-1"><Check className="w-3 h-3 shrink-0" /> Features locked</p>
+                                    : <p className="text-[10px] text-[#B45309] leading-snug">Using reference image only — for the tightest lock, try a clear, front-facing portrait.</p>
+                                )}
                               </div>
                             ))}
                           </div>
