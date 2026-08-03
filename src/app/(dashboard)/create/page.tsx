@@ -1179,7 +1179,10 @@ function CreateWizard() {
                         </Field>
                         <Field label="Video Style"><CustomSelect value={style} onChange={setStyle} options={STYLE_OPTIONS} /></Field>
                       </div>
-                      <Field label="Niche"><CustomSelect value={niche} onChange={setNiche} options={niches.map((n) => ({ value: n, label: n }))} placeholder="Pick a niche" disabled /></Field>
+                      {/* Editable here on purpose: a pasted custom script never went
+                          through the AI panel, and niche now drives how the script is
+                          cut into scenes (stanza-per-image for the psychology niches). */}
+                      <Field label="Niche"><CustomSelect value={niche} onChange={setNiche} options={niches.map((n) => ({ value: n, label: n }))} placeholder="Pick a niche" /></Field>
 
                       {/* Cast — one reference image per character, each with the name the
                           script uses, so scene prompts can lock their identity by name. */}
