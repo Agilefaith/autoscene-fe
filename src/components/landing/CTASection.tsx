@@ -36,7 +36,7 @@ export default function CTASection() {
           </p>
 
           <Link
-            href="/signup"
+            href="/login"
             className="btn-neon inline-flex items-center px-10 py-4 rounded-2xl text-lg font-semibold"
           >
             Start Creating

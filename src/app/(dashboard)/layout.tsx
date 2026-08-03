@@ -8,7 +8,7 @@ import {
   LayoutDashboard, FolderOpen, FileText, Film, Mic, Palette,
   LayoutTemplate, Images, Download, CreditCard, Settings,
   Bell, Search, Zap, LogOut, Check, AlertTriangle,
-  CheckCircle2, XCircle, Crown,
+  CheckCircle2, XCircle, Crown, ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -81,6 +81,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, credits, signOut, loading } = useAuth();
+  // Team access is admin-only (invite-only app), so it is added per-render rather
+  // than sitting in the static list every user would see.
+  const navItems = profile?.role === 'admin'
+    ? [...sidebarItems, { label: 'Team access', href: '/team', icon: ShieldCheck }]
+    : sidebarItems;
 
   const [searchQuery, setSearchQuery]     = useState('');
   const [notifOpen, setNotifOpen]         = useState(false);
@@ -137,7 +142,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
-          {sidebarItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (

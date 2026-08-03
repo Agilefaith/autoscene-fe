@@ -3,7 +3,7 @@
 import { motion, type Variants } from 'framer-motion';
 import {
   Play, ArrowRight, Star, Sparkles, Check,
-  FileText, Image as ImageIcon, Mic, Palette, Settings, Type,
+  FileText, Image as ImageIcon, Mic, Palette, Settings, Type, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -64,13 +64,19 @@ export default function HeroSection() {
             voiceovers, motion, and subtitles — in minutes, not hours.
           </motion.p>
 
+          {/* AutoScene is invite-only: the site stays public, the app does not. */}
+          <motion.div variants={item} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-50 border border-primary/20">
+            <Lock className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-bold tracking-wide text-primary">INVITE-ONLY ACCESS</span>
+          </motion.div>
+
           <motion.div variants={item} className="flex flex-wrap gap-4">
             <Link
-              href="/signup"
+              href="/login"
               className="btn-cta px-7 py-3.5 rounded-xl text-base font-semibold flex items-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
-              Create Your First Video
+              Sign In
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a

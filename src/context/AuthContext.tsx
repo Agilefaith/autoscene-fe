@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import type { PlanId } from '@/data/plans';
 
 interface UserProfile {
+  /** 'admin' can invite users; everyone else is 'user' (invite-only access). */
+  role?: 'admin' | 'user';
   user_type: 'trial' | 'standard' | 'internal';
   plan_tier: PlanId;
 }
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('users')
-      .select('user_type, plan_tier')
+      .select('user_type, plan_tier, role')
       .eq('id', userId)
       .single();
     if (data) setProfile(data as UserProfile);

@@ -154,10 +154,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-center text-xs text-text-muted mt-6">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-primary hover:text-primary-dark transition-colors font-semibold">
-              Sign up free
-            </Link>
+            AutoScene is invite-only. Ask the administrator for an invitation to get access.
           </p>
         </div>
       </motion.div>

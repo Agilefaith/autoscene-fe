@@ -56,10 +56,10 @@ export default function Navbar() {
               Log in
             </Link>
             <Link
-              href="/signup"
+              href="/login"
               className="btn-cta text-[15px] px-6 py-2.5 rounded-xl cursor-pointer"
             >
-              Start Creating Free
+              Sign In
             </Link>
           </div>
 
@@ -104,11 +104,11 @@ export default function Navbar() {
                 Log in
               </Link>
               <Link
-                href="/signup"
+                href="/login"
                 onClick={() => setMobileOpen(false)}
                 className="btn-cta text-center py-2.5 rounded-xl font-medium"
               >
-                Start Creating Free
+                Sign In
               </Link>
             </div>
           </motion.div>
