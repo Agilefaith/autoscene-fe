@@ -770,6 +770,22 @@ function CreateWizard() {
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
 
+  // Resume a failed render from the stage that failed (no extra video charged).
+  const handleRetry = async () => {
+    if (!projectId) return;
+    setError(''); setBusy(true);
+    try {
+      const res = await authedFetch(`/api/projects/${projectId}/retry`, { method: 'POST' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d?.detail ?? 'Could not retry this video.'); return;
+      }
+      const d = await res.json();
+      setProjectStatus(d.status ?? 'pending');
+      trackProject(projectId);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  };
+
   const handleCancel = async () => {
     if (!projectId) return;
     const ok = await confirm({
@@ -793,6 +809,7 @@ function CreateWizard() {
   const pipelineStages = stagesToDisplay(projectStatus, durations);
   const isGenerating = step === 3 && projectStatus !== '' && !isTerminal(projectStatus);
   const isDone = projectStatus === 'completed';
+  const canRetry = step === 3 && (projectStatus.startsWith('failed') || projectStatus === 'timed_out');
   // Once generation has started (status set), lock the stepper — you can't go back
   // to edit Script/Scenes/Configure of a rendering or finished project.
   const navLocked = projectStatus !== '';
@@ -899,6 +916,17 @@ function CreateWizard() {
                 <div className="flex flex-col gap-2">
                   <a href={finalUrl} download className="btn-cta inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white"><Download className="w-4 h-4" /> Download</a>
                   <Link href="/projects" className="btn-secondary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm">Back to projects</Link>
+                </div>
+              )}
+              {/* A failed render resumes from the stage that failed, so finished
+                  scenes and images are reused rather than paid for twice. */}
+              {canRetry && (
+                <div className="flex flex-col gap-2">
+                  <button onClick={handleRetry} disabled={busy}
+                    className="btn-cta inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Retry Production
+                  </button>
+                  <p className="text-[11px] text-text-muted text-center">Picks up where it stopped. This does not use another video from your plan.</p>
                 </div>
               )}
             </div>
