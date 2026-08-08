@@ -8,6 +8,7 @@ import {
   ChevronRight, ChevronLeft, AlertTriangle, Check, Zap, Sparkles,
   ArrowRight, Download, RefreshCw, FileText, Film, Settings2, Rocket,
   Loader2, Play, X, Camera, Image as ImageIcon, Clapperboard, Clock,
+  Copy, ClipboardPaste,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,8 @@ interface Scene {
   idx: number;
   scene_text?: string | null;
   motion_type?: string | null;
-  image_prompt?: string | null;
+  image_prompt?: string | null;   // the AI's suggestion from the breakdown
+  user_prompt?: string | null;    // what the user wrote; rendered verbatim
   image_urls?: string[] | null;
   status: string;
 }
@@ -368,6 +370,11 @@ function CreateWizard() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [previewScene, setPreviewScene] = useState<Scene | null>(null);
   const [breakdownStatus, setBreakdownStatus] = useState<'idle' | 'running' | 'ready' | 'failed'>('idle');
+  // Manual image prompts: edited locally, saved to the API in one call.
+  const [promptsDirty, setPromptsDirty] = useState(false);
+  const [promptsSaving, setPromptsSaving] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
   const breakdownKeyRef = useRef<string>('');
 
   // Step 3 — Configure
@@ -608,12 +615,83 @@ function CreateWizard() {
     const tick = async () => {
       try {
         const p = await authedJson<Project>(`/api/projects/${pid}`);
-        if (p.scenes) setScenes(p.scenes.slice().sort((a, b) => a.idx - b.idx));
+        if (p.scenes) {
+          const fresh = p.scenes.slice().sort((a, b) => a.idx - b.idx);
+          // Take the server's image/status fields but keep whatever the user is
+          // typing: previews poll every few seconds, and overwriting the whole
+          // scene would wipe an unsaved prompt mid-keystroke.
+          setScenes((prev) => fresh.map((f) => {
+            const local = prev.find((s) => s.id === f.id);
+            return local ? { ...f, user_prompt: local.user_prompt ?? f.user_prompt } : f;
+          }));
+        }
         const pending = (p.scenes ?? []).some((s) => !(s.image_urls && s.image_urls.length));
         if (pending && tries++ < 45) setTimeout(tick, 4000);
       } catch { if (tries++ < 45) setTimeout(tick, 4000); }
     };
     setTimeout(tick, 3000);
+  };
+
+  // ── Manual image prompts (Faith, 2026-08-06) ──
+  // Every scene needs a prompt the user wrote; the renderer uses it verbatim.
+  // Kept in local state while editing and saved in one call, because a 20-minute
+  // video is ~120 scenes and a request per keystroke would be unusable.
+  const promptsFilled = scenes.filter((s) => (s.user_prompt ?? '').trim()).length;
+  const promptsMissing = scenes.length - promptsFilled;
+
+  const setScenePrompt = (sceneId: string, value: string) => {
+    setScenes((prev) => prev.map((s) => s.id === sceneId ? { ...s, user_prompt: value } : s));
+    setPromptsDirty(true);
+  };
+
+  const saveScenePrompts = async (): Promise<boolean> => {
+    if (!projectId || scenes.length === 0) return true;
+    setPromptsSaving(true);
+    try {
+      await authedFetch(`/api/projects/${projectId}/scene-prompts`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompts: scenes.map((s) => ({ idx: s.idx, user_prompt: s.user_prompt ?? '' })),
+        }),
+      });
+      setPromptsDirty(false);
+      return true;
+    } catch {
+      toast('Could not save your prompts. Please try again.', 'error');
+      return false;
+    } finally {
+      setPromptsSaving(false);
+    }
+  };
+
+  const copyAllNarration = async () => {
+    const text = scenes
+      .map((s) => `Scene ${s.idx + 1}\n${(s.scene_text ?? '').trim()}`)
+      .join('\n\n');
+    await navigator.clipboard.writeText(text);
+    toast(`Copied narration for ${scenes.length} scenes.`, 'success');
+  };
+
+  // Bulk paste: one prompt per block, blocks separated by a blank line. Falls back
+  // to one-per-line when the paste has no blank lines at all, which is what you
+  // get pasting a column out of a spreadsheet.
+  const applyBulkPrompts = (raw: string) => {
+    const byBlank = raw.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+    const parts = byBlank.length > 1
+      ? byBlank
+      : raw.split('\n').map((t) => t.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    setScenes((prev) => prev.map((s, i) => i < parts.length ? { ...s, user_prompt: parts[i] } : s));
+    setPromptsDirty(true);
+    setBulkOpen(false);
+    setBulkText('');
+    toast(
+      parts.length === scenes.length
+        ? `Filled all ${scenes.length} scenes.`
+        : `Filled ${Math.min(parts.length, scenes.length)} of ${scenes.length} scenes.`,
+      'success'
+    );
   };
 
   const regenerateSceneImage = async (sceneId: string) => {
@@ -1041,8 +1119,8 @@ function CreateWizard() {
               {/* STEP 3 — SCENES */}
               {step === 2 && (
                 <div className="space-y-6">
-                  <StepHeader icon={<Film className="w-5 h-5" />} title="Review your scenes"
-                    desc="We split your script into ~10-second scenes. Generate previews to see each image, then regenerate any that don't fit — previews are reused in the final render." />
+                  <StepHeader icon={<Film className="w-5 h-5" />} title="Write your scene prompts"
+                    desc="We split your script into ~10-second scenes. Write the image prompt for each one and we use your words exactly, so the visuals match the narration instead of the AI's interpretation." />
 
                   {breakdownStatus === 'idle' && (
                     <div className="glass rounded-2xl p-10 flex flex-col items-center gap-3 text-center">
@@ -1075,43 +1153,137 @@ function CreateWizard() {
 
                   {breakdownStatus === 'ready' && (
                     <>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-text-muted">{scenes.length} scene{scenes.length !== 1 ? 's' : ''}</p>
-                        <div className="flex items-center gap-2">
-                          {scenes.some((s) => !(s.image_urls && s.image_urls.length)) && (
-                            <button onClick={generatePreviews} className="btn-cta inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-white">
-                              <Sparkles className="w-3.5 h-3.5" /> Generate previews
-                            </button>
+                      {/* Progress + bulk actions. On a 20-minute video this is
+                          ~120 scenes, so copying narration and pasting prompts
+                          one at a time is not a workable flow. */}
+                      <div className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-text">
+                            {promptsFilled} of {scenes.length} prompts written
+                          </p>
+                          <div className="h-1.5 bg-surface-muted rounded-full overflow-hidden mt-2 max-w-xs">
+                            <div className="h-full rounded-full bg-primary transition-all duration-300"
+                              style={{ width: `${scenes.length ? (promptsFilled / scenes.length) * 100 : 0}%` }} />
+                          </div>
+                          {promptsMissing > 0 && (
+                            <p className="text-xs text-text-muted mt-1.5">
+                              Every scene needs a prompt before you can generate.
+                            </p>
                           )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button onClick={copyAllNarration} className="btn-secondary inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium">
+                            <Copy className="w-3.5 h-3.5" /> Copy all narration
+                          </button>
+                          <button onClick={() => setBulkOpen((v) => !v)} className="btn-secondary inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium">
+                            <ClipboardPaste className="w-3.5 h-3.5" /> Bulk paste
+                          </button>
                           <button onClick={() => projectId && runBreakdown(projectId)} className="btn-secondary inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium">
-                            <RefreshCw className="w-3.5 h-3.5" /> Re-generate scenes
+                            <RefreshCw className="w-3.5 h-3.5" /> Re-split scenes
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {scenes.map((s) => (
-                          <div key={s.id} className="glass rounded-xl overflow-hidden flex flex-col">
-                            <div className="relative w-full aspect-video bg-primary-50 overflow-hidden flex items-center justify-center">
-                              {s.image_urls?.[0] ? (
-                                <img src={s.image_urls[0]} alt="" onClick={() => setPreviewScene(s)}
-                                  className="absolute inset-0 w-full h-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" />
-                              ) : s.status === 'pending' ? (
-                                <div className="flex flex-col items-center gap-1.5 text-primary"><Loader2 className="w-6 h-6 animate-spin" /><span className="text-[10px] text-text-muted">generating…</span></div>
-                              ) : (
-                                <ImageIcon className="w-7 h-7 text-primary/40" />
-                              )}
-                              <button onClick={() => regenerateSceneImage(s.id)} title="Regenerate image"
-                                className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white/90 backdrop-blur flex items-center justify-center text-text-muted hover:text-primary shadow-card">
-                                <RefreshCw className="w-3.5 h-3.5" />
-                              </button>
-                              {s.motion_type && <span className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full bg-[#1C1530]/70 text-white backdrop-blur">{s.motion_type}</span>}
-                            </div>
-                            <div className="p-3">
-                              <span className="text-xs font-semibold text-text-secondary">Scene {s.idx + 1}</span>
-                              <p className="text-xs text-text mt-1 line-clamp-2 min-h-[2rem]">{s.scene_text}</p>
-                            </div>
+
+                      {bulkOpen && (
+                        <div className="glass rounded-2xl p-4 space-y-3">
+                          <div>
+                            <p className="text-sm font-semibold text-text">Paste every prompt at once</p>
+                            <p className="text-xs text-text-muted mt-1">
+                              One prompt per scene, in order, separated by a blank line.
+                              A plain list with one prompt per line works too. Scene {scenes.length > 0 ? 1 : 0} gets the first,
+                              and anything past scene {scenes.length} is ignored.
+                            </p>
                           </div>
-                        ))}
+                          <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8}
+                            placeholder={'Wide shot of an empty classroom at dusk...\n\nClose up on a boy tying his shoes...'}
+                            className={cn(inputClass, 'font-mono text-xs leading-relaxed')} />
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => applyBulkPrompts(bulkText)} disabled={!bulkText.trim()}
+                              className="btn-cta inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50">
+                              Apply to scenes
+                            </button>
+                            <button onClick={() => { setBulkOpen(false); setBulkText(''); }}
+                              className="btn-secondary px-4 py-2 rounded-xl text-sm font-medium">Cancel</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {scenes.some((s) => !(s.image_urls && s.image_urls.length)) && promptsMissing === 0 && (
+                        <button onClick={generatePreviews} className="btn-cta inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white">
+                          <Sparkles className="w-4 h-4" /> Generate previews
+                        </button>
+                      )}
+                      <div className="flex flex-col gap-4">
+                        {scenes.map((s) => {
+                          const filled = !!(s.user_prompt ?? '').trim();
+                          return (
+                            <div key={s.id} className={cn(
+                              'glass rounded-2xl p-4 flex flex-col md:flex-row gap-4 transition-colors',
+                              !filled && 'border border-warning/40'
+                            )}>
+                              {/* Preview thumbnail, once the scene has an image */}
+                              <div className="relative w-full md:w-40 shrink-0 aspect-video rounded-xl bg-primary-50 overflow-hidden flex items-center justify-center">
+                                {s.image_urls?.[0] ? (
+                                  <img src={s.image_urls[0]} alt="" onClick={() => setPreviewScene(s)}
+                                    className="absolute inset-0 w-full h-full object-cover cursor-zoom-in transition-transform duration-300 hover:scale-105" />
+                                ) : s.status === 'pending' ? (
+                                  <div className="flex flex-col items-center gap-1.5 text-primary"><Loader2 className="w-5 h-5 animate-spin" /><span className="text-[10px] text-text-muted">generating…</span></div>
+                                ) : (
+                                  <ImageIcon className="w-6 h-6 text-primary/40" />
+                                )}
+                                {s.image_urls?.[0] && (
+                                  <button onClick={() => regenerateSceneImage(s.id)} title="Regenerate image"
+                                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-white/90 backdrop-blur flex items-center justify-center text-text-muted hover:text-primary shadow-card">
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {s.motion_type && <span className="absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-[#1C1530]/70 text-white backdrop-blur">{s.motion_type}</span>}
+                              </div>
+
+                              <div className="flex-1 min-w-0 space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-text">Scene {s.idx + 1}</span>
+                                  {!filled && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-warning/15 text-warning">
+                                      Prompt needed
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Narration in its own box so it is easy to read and copy */}
+                                <div>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Narration</label>
+                                    <button
+                                      onClick={async () => {
+                                        await navigator.clipboard.writeText((s.scene_text ?? '').trim());
+                                        toast(`Scene ${s.idx + 1} narration copied.`, 'success');
+                                      }}
+                                      className="inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-primary transition-colors">
+                                      <Copy className="w-3 h-3" /> Copy
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-text leading-relaxed bg-surface-muted border border-border rounded-xl px-3 py-2.5 whitespace-pre-wrap">
+                                    {s.scene_text}
+                                  </p>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[11px] font-semibold text-text-secondary uppercase tracking-wide mb-1">
+                                    Image prompt <span className="text-warning normal-case font-normal">· required</span>
+                                  </label>
+                                  <textarea
+                                    value={s.user_prompt ?? ''}
+                                    onChange={(e) => setScenePrompt(s.id, e.target.value)}
+                                    onBlur={() => { if (promptsDirty) void saveScenePrompts(); }}
+                                    rows={3}
+                                    placeholder="Describe exactly what this scene should look like. We send this to the image model word for word."
+                                    className={cn(inputClass, 'text-xs leading-relaxed resize-y')} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -1379,12 +1551,31 @@ function CreateWizard() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => { if (step === 0) handleScriptNext(); else if (step === 1) handleConfigureNext(); else setStep(3); }}
-              disabled={busy || (step === 0 && !scriptReady) || (step === 2 && breakdownStatus !== 'ready')}
-              className="btn-cta inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Next <ArrowRight className="w-4 h-4" /></>}
-            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              {step === 2 && breakdownStatus === 'ready' && promptsMissing > 0 && (
+                <p className="text-xs text-warning">
+                  {promptsMissing} scene{promptsMissing !== 1 ? 's' : ''} still need
+                  {promptsMissing === 1 ? 's' : ''} an image prompt.
+                </p>
+              )}
+              <button
+                onClick={async () => {
+                  if (step === 0) return handleScriptNext();
+                  if (step === 1) return handleConfigureNext();
+                  // Flush the prompts before leaving the step, or a render would
+                  // be charged against whatever was last saved.
+                  if (promptsDirty && !(await saveScenePrompts())) return;
+                  setStep(3);
+                }}
+                disabled={
+                  busy || promptsSaving
+                  || (step === 0 && !scriptReady)
+                  || (step === 2 && (breakdownStatus !== 'ready' || promptsMissing > 0))
+                }
+                className="btn-cta inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
+                {busy || promptsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Next <ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </div>
           )}
         </div>
       )}

@@ -19,7 +19,8 @@ export interface Scene {
   emotion?: string | null;
   action?: string | null;
   environment?: string | null;
-  image_prompt?: string | null;
+  image_prompt?: string | null;   // the AI's suggestion from the breakdown
+  user_prompt?: string | null;    // what the user wrote; used verbatim when rendering
   image_prompts?: string[] | null;
   motion_type?: string | null;
   image_urls?: string[] | null;
