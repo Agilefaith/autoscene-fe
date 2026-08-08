@@ -63,7 +63,7 @@ export default function ProjectsPage() {
               <Link href={`/create?project=${p.id}`} className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-text truncate">{p.name}</p>
                 <p className="text-xs text-text-muted">
-                  {p.render_mode === 'mode_2' ? 'Enhanced' : 'Cinematic'} · {p.format} · {p.duration_seconds}s · {new Date(p.created_at).toLocaleDateString()}
+                  Cinematic · {p.format} · {p.duration_seconds}s · {new Date(p.created_at).toLocaleDateString()}
                 </p>
               </Link>
               <StatusBadge status={p.status} />

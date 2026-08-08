@@ -30,7 +30,7 @@ export default function TemplatesPage() {
               <p className="text-sm font-semibold text-text">{t.name}</p>
               <p className="text-xs text-text-muted mt-1 leading-relaxed flex-1">{t.description}</p>
               <div className="flex items-center gap-3 mt-3 text-[11px] text-text-muted">
-                <span className="inline-flex items-center gap-1"><Clapperboard className="w-3.5 h-3.5" /> {t.config.render_mode === 'mode_2' ? 'Enhanced' : 'Cinematic'}</span>
+                <span className="inline-flex items-center gap-1"><Clapperboard className="w-3.5 h-3.5" /> Cinematic</span>
                 <span className="inline-flex items-center gap-1"><Captions className="w-3.5 h-3.5" /> {t.config.subtitle.enabled ? 'Subtitles' : 'No subtitles'}</span>
               </div>
               <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">

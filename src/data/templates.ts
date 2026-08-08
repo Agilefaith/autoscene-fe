@@ -5,7 +5,7 @@ export type SubtitleStyleOption = 'sans' | 'serif' | 'mono' | 'bold' | 'italic';
 export type SubtitlePlacement = 'top' | 'center' | 'bottom';
 
 export interface TemplateConfig {
-  render_mode: 'mode_1' | 'mode_2';
+  render_mode: 'mode_1';
   format: '16:9' | '9:16';
   style: string;
   niche: string; // must match a backend niche label exactly
@@ -49,7 +49,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'motivational-reel', name: 'Motivational Reel', tag: 'Shorts',
     description: 'Punchy vertical quote shorts with enhanced motion.',
-    config: { render_mode: 'mode_2', format: '9:16', style: 'cartoon', niche: 'Motivational & Quote Shorts', subtitle: sub({ font_color: '#FBBF24', placement: 'center' }) },
+    config: { render_mode: 'mode_1', format: '9:16', style: 'cartoon', niche: 'Motivational & Quote Shorts', subtitle: sub({ font_color: '#FBBF24', placement: 'center' }) },
   },
   {
     id: 'history-doc', name: 'History Documentary', tag: 'YouTube',
@@ -64,6 +64,6 @@ export const TEMPLATES: Template[] = [
   {
     id: 'self-improvement', name: 'Self-Improvement Short', tag: 'Shorts',
     description: 'Discipline & growth shorts with semi-animated scenes.',
-    config: { render_mode: 'mode_2', format: '9:16', style: 'cartoon', niche: 'Self-Improvement & Discipline', subtitle: sub() },
+    config: { render_mode: 'mode_1', format: '9:16', style: 'cartoon', niche: 'Self-Improvement & Discipline', subtitle: sub() },
   },
 ];

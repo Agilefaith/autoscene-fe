@@ -24,7 +24,7 @@ import type { SavedVoice, PresetVoice } from '@/types/voice';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RenderMode = 'mode_1' | 'mode_2';
+type RenderMode = 'mode_1';
 type Format = '16:9' | '9:16';
 type SubtitleStyleOption = 'sans' | 'serif' | 'mono' | 'bold' | 'italic';
 type SubtitlePlacement = 'top' | 'center' | 'bottom';
@@ -83,7 +83,7 @@ interface Project {
 const STEPS = ['Script', 'Configure', 'Scenes', 'Generate'];
 
 // Mode 3 (Real Animation) was removed entirely per Faith's 2026-06-27 request —
-// v1 ships Mode 1 and Mode 2 only.
+// Mode 1 is the only render mode (Faith, 2026-08-05).
 const RENDER_MODES: {
   value: RenderMode; label: string; tag: string; desc: string;
   bullets: string[]; disabled?: boolean;
@@ -93,17 +93,15 @@ const RENDER_MODES: {
     desc: '1 image per scene with cinematic camera effects.',
     bullets: ['15 Camera Moves', 'Micro Motion', 'Emotion-based Transitions'],
   },
-  {
-    value: 'mode_2', label: 'Enhanced Motion', tag: 'Balanced',
-    desc: '3 images per scene with smooth transitions.',
-    bullets: ['Crossfade Transitions', 'Zoom / Pan per image', 'Progressive Prompts'],
-  },
 ];
 
 const FORMAT_OPTIONS: { value: Format; label: string; sub: string; w: number; h: number }[] = [
   { value: '16:9', label: '16:9', sub: 'YouTube',       w: 40, h: 24 },
   { value: '9:16', label: '9:16', sub: 'Shorts / Reels', w: 24, h: 40 },
 ];
+
+// The platform ceiling on a single render (backend Settings.max_video_seconds).
+const MAX_VIDEO_SECONDS = 2400;
 
 const LENGTH_OPTIONS: { seconds: number; label: string }[] = [
   { seconds: 15, label: '15 sec' }, { seconds: 30, label: '30 sec' },
@@ -177,9 +175,11 @@ const FAILED_STAGE_IDX: Record<string, number> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-// Billing is a per-video monthly quota (see backend PLANS): every render costs
-// exactly 1 video regardless of length or mode. Mode 2's higher cost is priced
-// into the Mode 2 plans, not charged per render.
+// Billing is in credits (see backend PLANS): one credit buys one minute of
+// finished video and any started minute is charged in full, so a 90s video costs
+// 2. Keep this in step with Settings.credits_for() on the backend.
+const SECONDS_PER_CREDIT = 60;
+const creditsFor = (seconds: number) => Math.max(1, Math.ceil(Math.max(1, seconds) / SECONDS_PER_CREDIT));
 
 /** Cast entries ready for the API: image required, names trimmed. `description`
  *  (the backend's identity-lock sheet) is preserved so re-saving a project never
@@ -315,10 +315,10 @@ function CreateWizard() {
   const toast = useToast();
   const { profile } = useAuth();
 
-  // The signed-in plan caps how long a video can be (quota model). AI target
-  // lengths and the duration shown are limited to this.
+  // Credits are what limit length now, not the plan: a longer video simply costs
+  // more of them. Only the hard platform ceiling caps the options.
   const plan = resolvePlan(profile?.user_type, profile?.plan_tier);
-  const planCap = plan.maxSeconds;
+  const planCap = MAX_VIDEO_SECONDS;
   const lengthOptions = LENGTH_OPTIONS.filter((o) => o.seconds <= planCap);
 
   // Upload one character reference and append it to the cast. The name is filled
@@ -447,7 +447,7 @@ function CreateWizard() {
       setProjectName(p.name ?? 'Project');
       setScenes(p.scenes ?? []);
       // hydrate configuration so Configure/summary reflect the real project
-      if (p.render_mode === 'mode_1' || p.render_mode === 'mode_2') setRenderMode(p.render_mode);
+      if (p.render_mode === 'mode_1') setRenderMode(p.render_mode);
       if (p.format === '16:9' || p.format === '9:16') setFormat(p.format);
       if (p.duration_seconds) setDurationSeconds(p.duration_seconds);
       if (p.niche) setNiche(p.niche);
@@ -896,7 +896,9 @@ function CreateWizard() {
                 <SummaryRow label="Subtitles" value={subtitle.enabled ? 'On' : 'Off'} />
                 <div className="flex items-center justify-between pt-3 border-t border-border">
                   <span className="text-sm text-text-muted flex items-center gap-1.5"><Zap className="w-4 h-4 text-primary" /> Cost</span>
-                  <span className="text-sm font-semibold text-text">1 video</span>
+                  <span className="text-sm font-semibold text-text">
+                    {creditsFor(durationSeconds)} {creditsFor(durationSeconds) === 1 ? 'credit' : 'credits'}
+                  </span>
                 </div>
                 {!voiceReady && (
                   <button onClick={() => setStep(1)}
@@ -926,7 +928,7 @@ function CreateWizard() {
                     className="btn-cta inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white disabled:opacity-50">
                     {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Retry Production
                   </button>
-                  <p className="text-[11px] text-text-muted text-center">Picks up where it stopped. This does not use another video from your plan.</p>
+                  <p className="text-[11px] text-text-muted text-center">Picks up where it stopped. This does not cost any extra credits.</p>
                 </div>
               )}
             </div>
@@ -973,7 +975,7 @@ function CreateWizard() {
                         <Field label="Title / concept"><input className={inputClass} value={aiTitle} onChange={(e) => setAiTitle(e.target.value)} placeholder="e.g. Discipline beats motivation" /></Field>
                         <Field label="Product / topic"><input className={inputClass} value={aiProduct} onChange={(e) => setAiProduct(e.target.value)} placeholder="optional" /></Field>
                         <Field label="Audience"><input className={inputClass} value={aiAudience} onChange={(e) => setAiAudience(e.target.value)} placeholder="e.g. young creators" /></Field>
-                        <Field label={`Target length · ${plan.name} allows up to ${formatDuration(planCap)}`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
+                        <Field label={`Target length · costs ${creditsFor(Math.min(aiSeconds, planCap))} credits`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
                         <Field label="Goal"><CustomSelect value={aiGoal} onChange={setAiGoal} options={GOAL_OPTIONS} /></Field>
                         <Field label="Style"><CustomSelect value={aiStyle} onChange={setAiStyle} options={SCRIPT_STYLE_OPTIONS} /></Field>
                         <Field label="Tone"><CustomSelect value={aiTone} onChange={setAiTone} options={TONE_OPTIONS} /></Field>

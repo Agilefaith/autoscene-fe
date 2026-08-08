@@ -79,7 +79,7 @@ export default function DashboardPage() {
                 <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center text-primary shrink-0"><Film className="w-4 h-4" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text truncate">{p.name}</p>
-                  <p className="text-xs text-text-muted">{p.render_mode === 'mode_2' ? 'Enhanced' : 'Cinematic'} · {p.format} · {new Date(p.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-text-muted">Cinematic · {p.format} · {new Date(p.created_at).toLocaleDateString()}</p>
                 </div>
                 <StatusBadge status={p.status} />
               </Link>

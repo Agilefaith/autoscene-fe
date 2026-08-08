@@ -1,4 +1,6 @@
-export type RenderMode = 'mode_1' | 'mode_2';
+// Mode 2 was removed on Faith's instruction (2026-08-05): Mode 1 is the only
+// way to create a video.
+export type RenderMode = 'mode_1';
 export type ProjectFormat = '16:9' | '9:16';
 
 // Mirrors backend project status machine (see projects pipeline).
