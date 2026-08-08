@@ -1053,7 +1053,7 @@ function CreateWizard() {
                         <Field label="Title / concept"><input className={inputClass} value={aiTitle} onChange={(e) => setAiTitle(e.target.value)} placeholder="e.g. Discipline beats motivation" /></Field>
                         <Field label="Product / topic"><input className={inputClass} value={aiProduct} onChange={(e) => setAiProduct(e.target.value)} placeholder="optional" /></Field>
                         <Field label="Audience"><input className={inputClass} value={aiAudience} onChange={(e) => setAiAudience(e.target.value)} placeholder="e.g. young creators" /></Field>
-                        <Field label={`Target length · costs ${creditsFor(Math.min(aiSeconds, planCap))} credits`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
+                        <Field label={`Target length · costs ${creditsFor(Math.min(aiSeconds, planCap))} ${creditsFor(Math.min(aiSeconds, planCap)) === 1 ? 'credit' : 'credits'}`}><CustomSelect value={String(Math.min(aiSeconds, planCap))} onChange={(v) => setAiSeconds(Number(v))} options={lengthOptions.map((o) => ({ value: String(o.seconds), label: o.label }))} /></Field>
                         <Field label="Goal"><CustomSelect value={aiGoal} onChange={setAiGoal} options={GOAL_OPTIONS} /></Field>
                         <Field label="Style"><CustomSelect value={aiStyle} onChange={setAiStyle} options={SCRIPT_STYLE_OPTIONS} /></Field>
                         <Field label="Tone"><CustomSelect value={aiTone} onChange={setAiTone} options={TONE_OPTIONS} /></Field>
