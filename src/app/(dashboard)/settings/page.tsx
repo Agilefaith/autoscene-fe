@@ -17,9 +17,9 @@ export default function SettingsPage() {
 
   const rows = [
     { icon: Mail, label: 'Email', value: email },
-    { icon: BadgeCheck, label: 'Plan', value: plan.name },
+    { icon: BadgeCheck, label: 'Plan', value: plan?.name ?? 'No plan' },
     { icon: Shield, label: 'Account type', value: profile?.user_type ?? 'trial' },
-    { icon: Zap, label: 'Videos left', value: `${credits?.balance ?? 0}` },
+    { icon: Zap, label: 'Credits left', value: `${(credits?.balance ?? 0) + (credits?.topup_balance ?? 0)}` },
   ];
 
   return (

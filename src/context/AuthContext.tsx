@@ -4,17 +4,19 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import type { PlanId } from '@/data/plans';
-
 interface UserProfile {
   /** 'admin' can invite users; everyone else is 'user' (invite-only access). */
   role?: 'admin' | 'user';
   user_type: 'trial' | 'standard' | 'internal';
-  plan_tier: PlanId;
+  /** Empty/null when the account has no live subscription (there is no free tier). */
+  plan_tier: string | null;
 }
 
 interface Credits {
+  /** Monthly plan allowance left — resets each period, no rollover. */
   balance: number;
+  /** Purchased Pay-As-You-Go credits — never expire. */
+  topup_balance?: number;
 }
 
 interface AuthContextValue {
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const { data } = await supabase
       .from('credits')
-      .select('balance')
+      .select('balance, topup_balance')
       .eq('user_id', user.id)
       .single();
     if (data) setCredits(data as Credits);
@@ -76,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile(session.user.id);
         supabase
           .from('credits')
-          .select('balance')
+          .select('balance, topup_balance')
           .eq('user_id', session.user.id)
           .single()
           .then(({ data }) => { if (mounted && data) setCredits(data as Credits); });
@@ -93,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile(session.user.id);
         supabase
           .from('credits')
-          .select('balance')
+          .select('balance, topup_balance')
           .eq('user_id', session.user.id)
           .single()
           .then(({ data }) => { if (mounted && data) setCredits(data as Credits); });

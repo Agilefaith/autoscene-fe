@@ -60,7 +60,7 @@ const DUMMY_NOTIFICATIONS: Notification[] = [
   {
     id: '3', type: 'warning', read: true,
     title: 'Running low on videos',
-    body: 'You have 2 videos left in your plan this month. Upgrade to keep generating.',
+    body: 'You are running low on credits this month. Upgrade to keep generating.',
     time: '1h ago',
   },
 ];
@@ -120,6 +120,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const displayEmail = user?.email ?? '';
   const initials = displayName.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
   const plan = resolvePlan(profile?.user_type, profile?.plan_tier);
+  // What is actually spendable: this month's plan allowance plus any purchased
+  // Pay-As-You-Go credits, which never expire.
+  const creditsLeft = (credits?.balance ?? 0) + (credits?.topup_balance ?? 0);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -136,7 +139,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="px-5 h-[72px] flex items-center gap-2 border-b border-white/[0.06]">
           <Logo href="/dashboard" size={26} wordmarkClassName="text-lg text-white" />
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white/70">
-            {plan.name}
+            {plan?.name ?? 'No plan'}
           </span>
         </div>
 
@@ -169,7 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Upgrade card */}
-        {plan.id === 'free' && (
+        {!plan && (
           <div className="px-3">
             <div className="rounded-2xl p-4 text-center bg-[#171227] border border-white/[0.07]">
               <div className="w-9 h-9 mx-auto rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#C026D3] flex items-center justify-center mb-2">
@@ -177,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <p className="text-sm font-semibold text-white">Upgrade your plan</p>
               <p className="text-[11px] text-[#9B96AD] leading-relaxed mt-1 mb-3">
-                Subscribe for a monthly video quota, longer videos, and Mode 2 enhanced motion.
+                Subscribe for monthly credits and longer videos.
               </p>
               <Link
                 href="/billing"
@@ -217,8 +220,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-50 border border-primary/15 hover:border-primary/30 transition-colors"
             >
               <Zap className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-semibold text-text">{credits?.balance ?? 0}</span>
-              <span className="text-xs text-text-muted">{(credits?.balance ?? 0) === 1 ? 'video left' : 'videos left'}</span>
+              <span className="text-xs font-semibold text-text">{creditsLeft}</span>
+              <span className="text-xs text-text-muted">{creditsLeft === 1 ? 'credit left' : 'credits left'}</span>
             </Link>
 
             {/* ── Notification bell ── */}
@@ -304,7 +307,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <p className="text-sm font-semibold text-text">{displayName}</p>
                       <p className="text-xs text-text-muted mt-0.5 truncate">{displayEmail}</p>
                       <span className="inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-primary bg-primary-50">
-                        {plan.name}
+                        {plan?.name ?? 'No plan'}
                       </span>
                     </div>
                     <div className="py-1">
