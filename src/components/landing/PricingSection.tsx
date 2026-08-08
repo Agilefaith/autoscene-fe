@@ -1,16 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
-import { Check, Clock, Video, Gauge, Sparkles } from 'lucide-react';
+import { motion, type Variants } from 'framer-motion';
+import { Check, Coins, Gauge, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import {
-  mode1Plans,
-  mode2Plans,
-  freePlan,
-  type LandingPlan,
-} from '@/data/pricing';
+import { plans, topupPacks, type LandingPlan } from '@/data/pricing';
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -21,32 +15,7 @@ const cardVariants: Variants = {
   }),
 };
 
-type ModeKey = 'mode_1' | 'mode_2';
-
-const MODES: {
-  key: ModeKey;
-  label: string;
-  tag: string;
-  blurb: string;
-  plans: LandingPlan[];
-}[] = [
-  {
-    key: 'mode_1',
-    label: 'Cinematic',
-    tag: 'Mode 1',
-    blurb: 'One image per scene with transitions + motion effects.',
-    plans: mode1Plans,
-  },
-  {
-    key: 'mode_2',
-    label: 'Enhanced',
-    tag: 'Mode 2',
-    blurb: 'Three images per scene for a polished cinematic feel.',
-    plans: mode2Plans,
-  },
-];
-
-function SpecRow({ icon: Icon, children }: { icon: typeof Video; children: React.ReactNode }) {
+function SpecRow({ icon: Icon, children }: { icon: typeof Coins; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 text-sm text-text-secondary">
       <Icon className="w-4 h-4 text-primary/70 shrink-0" />
@@ -61,7 +30,8 @@ function PlanCard({ plan, index }: { plan: LandingPlan; index: number }) {
       custom={index}
       variants={cardVariants}
       initial="hidden"
-      animate="show"
+      whileInView="show"
+      viewport={{ once: true }}
       className={cn(
         'relative rounded-2xl p-7 flex flex-col',
         plan.highlighted ? 'glass glow-blue gradient-border z-10' : 'glass glass-hover'
@@ -80,16 +50,16 @@ function PlanCard({ plan, index }: { plan: LandingPlan; index: number }) {
         {plan.name}
       </p>
       <div className="flex items-end gap-1.5">
-        <span className="text-4xl font-bold text-text">${plan.price}</span>
+        <span className="text-3xl font-bold text-text">{plan.price}</span>
         <span className="text-text-muted text-sm mb-1.5">/ {plan.period}</span>
       </div>
 
       {/* Uniform spec block — same order on every card for easy comparison */}
       <div className="flex flex-col gap-2.5 mt-6 pb-6 border-b border-border">
-        <SpecRow icon={Video}>
-          <b className="text-text font-semibold">{plan.videos}</b> {plan.videosSub}
+        <SpecRow icon={Coins}>
+          <b className="text-text font-semibold">{plan.credits}</b>
         </SpecRow>
-        <SpecRow icon={Clock}>{plan.maxDuration}</SpecRow>
+        <SpecRow icon={Zap}>{plan.creditsSub}</SpecRow>
         <SpecRow icon={Gauge}>{plan.queue}</SpecRow>
       </div>
 
@@ -117,9 +87,6 @@ function PlanCard({ plan, index }: { plan: LandingPlan; index: number }) {
 }
 
 export default function PricingSection() {
-  const [mode, setMode] = useState<ModeKey>('mode_1');
-  const active = MODES.find((m) => m.key === mode)!;
-
   return (
     <section id="pricing" className="py-20 relative scroll-mt-24">
       <div className="absolute inset-0 pointer-events-none">
@@ -132,100 +99,58 @@ export default function PricingSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-10"
+          className="text-center mb-12"
         >
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 text-text">
             Simple <span className="gradient-text-cta">Pricing</span>
           </h2>
           <p className="text-text-muted text-lg max-w-xl mx-auto">
-            Start free. Scale as you grow. No surprise fees.
+            One credit is one minute of finished video. Pick the plan that fits how
+            much you publish.
           </p>
         </motion.div>
 
-        {/* Mode toggle — pick quality tier first, then compare plans within it */}
-        <div className="flex flex-col items-center gap-3 mb-12">
-          <div className="relative inline-flex p-1 rounded-full glass">
-            {MODES.map((m) => {
-              const isActive = m.key === mode;
-              return (
-                <button
-                  key={m.key}
-                  onClick={() => setMode(m.key)}
-                  className={cn(
-                    'relative z-10 px-5 py-2 rounded-full text-sm font-semibold transition-colors duration-200',
-                    isActive ? 'text-white' : 'text-text-muted hover:text-text'
-                  )}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="mode-pill"
-                      className="absolute inset-0 rounded-full gradient-brand -z-10"
-                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                    />
-                  )}
-                  {m.label}
-                  <span className={cn('ml-1.5 text-xs opacity-70')}>{m.tag}</span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-sm text-text-muted flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary/70" />
-            {active.blurb}
-          </p>
+        <div className="grid gap-6 items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          {plans.map((plan, i) => (
+            <PlanCard key={plan.id} plan={plan} index={i} />
+          ))}
         </div>
 
-        {/* Plan cards for the selected mode */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className={cn(
-              'grid gap-6 items-stretch mx-auto',
-              active.plans.length === 2
-                ? 'grid-cols-1 md:grid-cols-2 max-w-3xl'
-                : 'grid-cols-1 md:grid-cols-3'
-            )}
-          >
-            {active.plans.map((plan, i) => (
-              <PlanCard key={plan.id} plan={plan} index={i} />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Free-trial strip — lightweight, not a full card */}
+        {/* Pay-As-You-Go — a one-off purchase, so it reads as a strip not a plan */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mt-8 glass rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+          className="mt-8 glass rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-5"
         >
           <div className="flex items-center gap-3 text-center sm:text-left">
             <span className="hidden sm:flex w-10 h-10 rounded-xl bg-primary-50 items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-primary" />
+              <Zap className="w-5 h-5 text-primary" />
             </span>
             <div>
-              <p className="font-semibold text-text">Just exploring? Try it free.</p>
+              <p className="font-semibold text-text">Pay-As-You-Go</p>
               <p className="text-sm text-text-muted">
-                1 free 30s video · Cinematic motion (Mode 1).
+                Top up any time. These credits never expire.
               </p>
             </div>
           </div>
-          <Link
-            href={freePlan.ctaHref}
-            className="btn-secondary px-6 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"
-          >
-            Start Free
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {topupPacks.map((pack) => (
+              <div
+                key={pack.id}
+                className="rounded-xl border border-border px-4 py-2.5 text-center"
+              >
+                <p className="text-sm font-semibold text-text">{pack.credits}</p>
+                <p className="text-xs text-text-muted">{pack.price}</p>
+              </div>
+            ))}
+          </div>
         </motion.div>
 
         {/* Fine print — mirrors Faith's brief "core principle" */}
         <p className="text-center text-xs text-text-muted mt-6">
-          Hard limits · no rollover · all limits reset monthly.
+          Plan credits reset monthly with no rollover · Pay-As-You-Go credits never expire.
         </p>
       </div>
     </section>

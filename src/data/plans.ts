@@ -1,21 +1,31 @@
 // The AutoScene plan catalog — mirrors backend PLANS (app/core/config.py).
-// Billing is a per-month VIDEO QUOTA: N videos / month, a max duration per
-// video, and the render mode(s) the plan unlocks. No rollover, monthly reset.
+// Billing is in CREDITS, where one credit is one minute of finished video
+// (Faith, 2026-08-05): a 20-minute video costs 20 credits, so the plan's credits
+// are what caps how much you can render. Plan credits reset monthly with no
+// rollover; Pay-As-You-Go credits are bought separately and never expire.
+// Prices are Naira because the Paystack account settles in NGN.
 
-export type PlanId = 'free' | 'starter' | 'creator' | 'scale' | 'creator_m2' | 'scale_m2';
+export type PlanId = 'starter' | 'creator' | 'pro' | 'scale';
 
 export interface PlanDef {
   id: PlanId;
   name: string;
-  price: number;            // USD / month
-  videosPerMonth: number;
-  maxSeconds: number;       // max duration per video
-  mode: 'mode_1' | 'mode_2';
-  imagesPerScene: 1 | 3;    // Mode 1 = 1, Mode 2 = 3
+  priceNgn: number;         // NGN / month
+  creditsPerMonth: number;  // 1 credit = 1 minute of video
   queue: string;            // render-queue priority tier
   features: string[];       // value-adds only (specs live in structured fields)
   highlighted?: boolean;
   badge?: string;
+}
+
+export interface TopupPackDef {
+  id: string;
+  credits: number;
+  priceNgn: number;
+}
+
+export function formatNgn(amount: number): string {
+  return `₦${amount.toLocaleString('en-NG')}`;
 }
 
 export function formatDuration(seconds: number): string {
@@ -24,59 +34,62 @@ export function formatDuration(seconds: number): string {
 }
 
 // Per-plan feature bullets — kept 1:1 with Faith's pricing brief (nothing added
-// or removed). Structured specs (videos / duration / queue) render separately.
+// or removed). Structured specs (credits / queue) render separately.
 export const PLAN_CATALOG: PlanDef[] = [
   {
-    id: 'free', name: 'Free Trial', price: 0, videosPerMonth: 1, maxSeconds: 30, mode: 'mode_1',
-    imagesPerScene: 1, queue: 'Standard queue',
+    id: 'starter', name: 'Starter', priceNgn: 22_400, creditsPerMonth: 20,
+    queue: 'Standard queue',
     features: ['Transitions + motion effects'],
   },
   {
-    id: 'starter', name: 'Starter', price: 7, videosPerMonth: 10, maxSeconds: 900, mode: 'mode_1',
-    imagesPerScene: 1, queue: 'Standard queue',
-    features: ['Transitions + motion effects'],
-  },
-  {
-    id: 'creator', name: 'Creator', price: 18, videosPerMonth: 30, maxSeconds: 1200, mode: 'mode_1',
-    imagesPerScene: 1, queue: 'Faster queue',
+    id: 'creator', name: 'Creator', priceNgn: 57_400, creditsPerMonth: 60,
+    queue: 'Faster queue',
     highlighted: true, badge: 'Most Popular',
-    features: ['Transitions + motion effects'],
+    // "No watermark" was dropped from the bullets (Faith, 2026-08-06): no plan
+    // has ever watermarked its output, so advertising it here implied the
+    // cheaper plans do.
+    features: ['Faster rendering'],
   },
   {
-    id: 'scale', name: 'Scale', price: 28, videosPerMonth: 65, maxSeconds: 1800, mode: 'mode_1',
-    imagesPerScene: 1, queue: 'Priority queue',
-    features: ['Transitions + motion effects'],
+    id: 'pro', name: 'Pro', priceNgn: 129_400, creditsPerMonth: 150,
+    queue: 'Priority queue',
+    features: ['Priority rendering', 'Better quality'],
   },
   {
-    id: 'creator_m2', name: 'Creator Mode 2', price: 25, videosPerMonth: 20, maxSeconds: 1200, mode: 'mode_2',
-    imagesPerScene: 3, queue: 'Standard queue',
-    features: ['3 images per scene', 'Polished cinematic feel'],
-  },
-  {
-    id: 'scale_m2', name: 'Scale Mode 2', price: 47, videosPerMonth: 50, maxSeconds: 1500, mode: 'mode_2',
-    imagesPerScene: 3, queue: 'Priority queue',
-    highlighted: true, badge: 'Best Quality',
-    features: ['3 images per scene', 'Polished cinematic feel'],
+    id: 'scale', name: 'Scale', priceNgn: 260_400, creditsPerMonth: 350,
+    queue: 'Priority queue',
+    badge: 'Best Value',
+    features: ['Bulk discount'],
   },
 ];
 
+// One-off credit purchases. These do not renew and the credits never expire.
+export const TOPUP_PACKS: TopupPackDef[] = [
+  { id: 'topup_80', credits: 80, priceNgn: 96_000 },
+  { id: 'topup_180', credits: 180, priceNgn: 176_000 },
+];
+
 export const PLAN_IDS = PLAN_CATALOG.map((p) => p.id);
-export const PAID_PLANS = PLAN_CATALOG.filter((p) => p.id !== 'free');
 
 // Internal accounts (user_type='internal') bypass the public plan catalog
-// entirely — this is not a purchasable plan, so it's kept out of
-// PLAN_CATALOG/PAID_PLANS to avoid it ever rendering on pricing/billing pages.
+// entirely — this is not a purchasable plan, so it's kept out of PLAN_CATALOG
+// to avoid it ever rendering on pricing/billing pages.
 export const INTERNAL_PLAN: PlanDef = {
-  id: 'scale_m2', name: 'Internal', price: 0, videosPerMonth: Infinity, maxSeconds: 1800, mode: 'mode_2',
-  imagesPerScene: 3, queue: 'Priority queue',
+  id: 'scale', name: 'Internal', priceNgn: 0, creditsPerMonth: Infinity,
+  queue: 'Priority queue',
   features: ['Unlimited internal access'],
 };
 
-export function planById(id: string | null | undefined): PlanDef {
-  return PLAN_CATALOG.find((p) => p.id === id) ?? PLAN_CATALOG[0];
+export function planById(id: string | null | undefined): PlanDef | null {
+  return PLAN_CATALOG.find((p) => p.id === id) ?? null;
 }
 
-export function resolvePlan(userType: string | null | undefined, planTier: string | null | undefined): PlanDef {
+// There is no free tier any more, so an account with no live subscription has no
+// plan at all — callers must handle null rather than silently showing a tier.
+export function resolvePlan(
+  userType: string | null | undefined,
+  planTier: string | null | undefined,
+): PlanDef | null {
   if (userType === 'internal') return INTERNAL_PLAN;
   return planById(planTier);
 }

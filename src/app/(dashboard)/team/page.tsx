@@ -19,8 +19,8 @@ interface Invite {
   accepted_at?: string | null;
 }
 interface PlanOption {
-  id: string; name: string; price_usd: number;
-  videos_per_month: number; max_minutes: number;
+  id: string; name: string; price_ngn: number;
+  credits_per_month: number;
 }
 
 const STATUS_STYLE: Record<Invite['status'], string> = {
@@ -37,7 +37,7 @@ export default function TeamPage() {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [email, setEmail] = useState('');
-  const [planId, setPlanId] = useState('free');
+  const [planId, setPlanId] = useState('starter');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -127,7 +127,7 @@ export default function TeamPage() {
               value={planId} onChange={(e) => setPlanId(e.target.value)}>
               {plans.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} — {p.videos_per_month} videos, up to {p.max_minutes} min
+                  {p.name} — {p.credits_per_month} credits / month
                 </option>
               ))}
             </select>
