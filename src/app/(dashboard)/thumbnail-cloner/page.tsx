@@ -34,6 +34,10 @@ export default function ThumbnailClonerPage() {
   // ── Clone a reference ──
   const [refFile, setRefFile] = useState<File | null>(null);
   const [refPreview, setRefPreview] = useState<string | null>(null);
+  // Optional second reference: a face to feature in the cloned thumbnail
+  // (Faith, 2026-08-11). Nothing else about the clone flow changes.
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [instructions, setInstructions] = useState('');
   const [cloning, setCloning] = useState(false);
   const [cloneUrl, setCloneUrl] = useState<string | null>(null);
@@ -84,12 +88,19 @@ export default function ThumbnailClonerPage() {
     setRefPreview(f ? URL.createObjectURL(f) : null);
   };
 
+  const handlePickAvatar = (f: File | null) => {
+    setAvatarFile(f); setCloneUrl(null); setCloneError('');
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    setAvatarPreview(f ? URL.createObjectURL(f) : null);
+  };
+
   const handleClone = async () => {
     if (!refFile) { setCloneError('Upload a reference thumbnail first.'); return; }
     setCloneError(''); setCloneUrl(null); setCloning(true);
     try {
       const fd = new FormData();
       fd.append('file', refFile);
+      if (avatarFile) fd.append('avatar', avatarFile);
       fd.append('instructions', instructions.trim());
       const res = await authedFetch('/api/thumbnails/clone', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
@@ -178,7 +189,32 @@ export default function ThumbnailClonerPage() {
                   onChange={(e) => { handlePickFile(e.target.files?.[0] ?? null); e.target.value = ''; }} />
               </label>
             </div>
-            <div className="flex flex-col">
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                Avatar / face <span className="text-text-muted font-normal">(optional)</span>
+              </label>
+              <label className={cn('relative flex flex-col items-center justify-center gap-2 aspect-video rounded-xl border border-dashed border-border bg-surface-muted cursor-pointer overflow-hidden hover:border-primary/40 transition-colors')}>
+                {avatarPreview ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={avatarPreview} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
+                    <button
+                      onClick={(e) => { e.preventDefault(); handlePickAvatar(null); }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#1C1530]/70 text-white backdrop-blur flex items-center justify-center hover:bg-[#EF4444] transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-6 h-6 text-text-muted" />
+                    <span className="text-xs text-text-muted">Add a face to feature on the thumbnail</span>
+                  </>
+                )}
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                  onChange={(e) => { handlePickAvatar(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              </label>
+            </div>
+            <div className="flex flex-col md:col-span-2">
               <label className="block text-xs font-semibold text-text-secondary mb-1.5">What should change?</label>
               <textarea
                 className="flex-1 min-h-[120px] px-3 py-2.5 rounded-xl border border-border-strong bg-white text-sm text-text resize-none"
